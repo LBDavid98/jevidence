@@ -1,0 +1,75 @@
+{
+  "id": "seo-review",
+  "version": "1",
+  "description": "The SEO article readers as typed questions. Every question is true when there is a problem, so a high probability always means the same thing. The brief and the source list belong in the state's input field; the section's prose in output.",
+  "segment": "sentence",
+  "state": "input+output",
+  "questions": {
+    "claim-outside-brief": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This sentence makes a factual claim that nothing in the research brief supports.",
+      "criteria": {
+        "true": "The sentence asserts something about the world that the brief in the state does not contain.",
+        "false": "Everything the sentence asserts is in the brief, is a definition of a term the brief uses, or is a transition that asserts nothing."
+      }
+    },
+    "figure-uncited": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This sentence gives a number that no bracketed citation marker supports.",
+      "criteria": {
+        "true": "A figure, a percentage, a money amount, a count appears with no bracketed marker such as [3] attached to the sentence.",
+        "false": "The sentence has no figure in it, or every figure in it sits in a sentence carrying a bracketed marker."
+      }
+    },
+    "named-study-uncited": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This sentence names a study whose bracketed citation marker is missing.",
+      "criteria": {
+        "true": "A named report, survey, index, publisher is referred to with no bracketed marker attached to the sentence.",
+        "false": "No named study appears, or the named study carries its marker."
+      }
+    },
+    "jargon-term": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "advisory",
+      "threshold": 0.6,
+      "instructions": "This sentence uses a term that the owner of a small business would not recognise.",
+      "criteria": {
+        "true": "A term of art appears with no plain explanation beside it.",
+        "false": "Every term in the sentence is ordinary business language, is a proper name, is explained where it appears."
+      }
+    },
+    "heading-answered": {
+      "type": "noul",
+      "per": "unit",
+      "severity": "advisory",
+      "threshold": 0.6,
+      "instructions": "The opening sentence of this section leaves the question in its heading unanswered.",
+      "criteria": {
+        "true": "A reader who read the heading, then the first sentence, still does not have the answer.",
+        "false": "The first sentence gives the answer the heading promises."
+      }
+    },
+    "keyword-natural": {
+      "type": "noul",
+      "per": "unit",
+      "severity": "advisory",
+      "threshold": 0.65,
+      "instructions": "A use of the primary keyword in this text reads as forced.",
+      "criteria": {
+        "true": "At least one occurrence of the keyword sits in a sentence no writer would have written that way.",
+        "false": "Every occurrence reads as ordinary prose."
+      }
+    }
+  }
+}

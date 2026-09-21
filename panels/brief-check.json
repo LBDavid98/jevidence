@@ -1,0 +1,240 @@
+{
+  "id": "brief-check",
+  "version": "1",
+  "description": "One question per line of a research brief, each naming a single way a line can be wrong. The brief's line goes in the segment; the sources it cites belong in the state's input field.",
+  "segment": "sentence",
+  "state": "input+output",
+  "questions": {
+    "figure-differs-from-source": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line gives a figure that differs from the figure in the source it cites.",
+      "criteria": {
+        "true": "The number in the line does not match the number in the cited source.",
+        "false": "The number matches the cited source, no number appears in the line."
+      }
+    },
+    "claim-unsupported-by-citation": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line makes a claim that the source behind its bracketed marker does not support.",
+      "criteria": {
+        "true": "The cited source says nothing that establishes the claim.",
+        "false": "The cited source establishes the claim."
+      }
+    },
+    "undated-source-as-current": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line presents an undated source as current.",
+      "criteria": {
+        "true": "The line implies recency for a source whose date is unknown.",
+        "false": "The line carries a date, the line makes no claim about recency."
+      }
+    },
+    "secondhand-as-first-party": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line presents a statistic taken from elsewhere as the citing publication's own.",
+      "criteria": {
+        "true": "The publication named in the line only repeated the figure from another publication.",
+        "false": "The publication named in the line produced the figure itself."
+      }
+    },
+    "population-mismatch": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line describes a population that differs from the population the cited study measured.",
+      "criteria": {
+        "true": "The group in the line is not the group the study sampled.",
+        "false": "The group in the line is the group the study sampled."
+      }
+    },
+    "collector-mismatch": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line names a collector of the data that differs from the one the source names.",
+      "criteria": {
+        "true": "The line credits the wrong organisation with gathering the data.",
+        "false": "The line credits the organisation the source credits."
+      }
+    },
+    "vendor-claim-as-fact": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line states a vendor's claim about its own product as established fact.",
+      "criteria": {
+        "true": "A marketing claim by the seller is repeated without attribution to the seller.",
+        "false": "The line attributes the claim to the seller, the claim comes from an independent source."
+      }
+    },
+    "year-not-in-source": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line gives a year that the cited source does not state.",
+      "criteria": {
+        "true": "The year in the line appears nowhere in the source.",
+        "false": "The year in the line comes from the source, no year appears."
+      }
+    },
+    "currently-not-in-source": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line calls something current when the cited source says nothing about the present.",
+      "criteria": {
+        "true": "A present-tense framing is added that the source does not carry.",
+        "false": "The source itself establishes the present-tense framing."
+      }
+    },
+    "author-domain-mismatch": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line names an organisation as the author while its bracketed marker points at another domain.",
+      "criteria": {
+        "true": "The named author does not own the domain behind the marker.",
+        "false": "The named author owns the domain behind the marker."
+      }
+    },
+    "workers-stated-as-businesses": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line reports a survey of workers as a share of businesses.",
+      "criteria": {
+        "true": "The unit measured was people, the line reports companies.",
+        "false": "The unit in the line matches the unit measured."
+      }
+    },
+    "general-advice-as-ai-advice": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "advisory",
+      "threshold": 0.65,
+      "instructions": "This line recasts general advice as advice specific to AI.",
+      "criteria": {
+        "true": "The cited guidance was not about AI at all.",
+        "false": "The cited guidance was about AI."
+      }
+    },
+    "one-price-as-general": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line states the price of one product as true of the category.",
+      "criteria": {
+        "true": "A single vendor's price is presented as what such tools cost.",
+        "false": "The line attributes the price to the one product."
+      }
+    },
+    "sample-size-missing": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "advisory",
+      "threshold": 0.65,
+      "instructions": "This line reports a survey result whose sample size it does not give.",
+      "criteria": {
+        "true": "A survey finding appears with no indication of how many were asked.",
+        "false": "The sample size appears, the line reports no survey finding."
+      }
+    },
+    "projection-as-measurement": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line presents a projection as a measured result.",
+      "criteria": {
+        "true": "A forecast is written in the past tense, a forecast is written as an observation.",
+        "false": "The line marks the figure as a forecast."
+      }
+    },
+    "correlation-as-cause": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line presents a correlation as a cause.",
+      "criteria": {
+        "true": "The source reports an association, the line asserts causation.",
+        "false": "The line keeps the association an association."
+      }
+    },
+    "global-figure-as-local": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line applies a worldwide figure to one country.",
+      "criteria": {
+        "true": "A global statistic is written as though it described a single market.",
+        "false": "The scope in the line matches the scope of the figure."
+      }
+    },
+    "superlative-unsupported": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "advisory",
+      "threshold": 0.65,
+      "instructions": "This line uses a superlative that no cited source establishes.",
+      "criteria": {
+        "true": "A claim of most, best, fastest, largest rests on nothing in the sources.",
+        "false": "The superlative comes from a source, no superlative appears."
+      }
+    },
+    "paraphrase-changes-meaning": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line paraphrases its source in a way that changes what the source means.",
+      "criteria": {
+        "true": "A reader of the source would object to the paraphrase.",
+        "false": "The paraphrase preserves the source's meaning."
+      }
+    },
+    "definition-invented": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line defines a term in a way no cited source gives.",
+      "criteria": {
+        "true": "The definition appears nowhere in the sources.",
+        "false": "The definition comes from a source, the line defines nothing."
+      }
+    },
+    "marketing-page-as-evidence": {
+      "type": "noul",
+      "per": "segment",
+      "severity": "hard",
+      "threshold": 0.7,
+      "instructions": "This line treats a marketing page as independent evidence.",
+      "criteria": {
+        "true": "The cited page exists to sell the thing it is cited about.",
+        "false": "The cited page is independent of what it establishes."
+      }
+    }
+  }
+}

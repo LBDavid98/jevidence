@@ -1,0 +1,49 @@
+{
+  "id": "generic-quality",
+  "version": "1",
+  "description": "Four questions worth asking of almost any generated answer. True always means there is a problem.",
+  "segment": "none",
+  "state": "input+output",
+  "questions": {
+    "answers-the-brief": {
+      "type": "noul",
+      "severity": "hard",
+      "threshold": 0.6,
+      "instructions": "The answer leaves part of what the input asked for unaddressed.",
+      "criteria": {
+        "true": "Something the input explicitly asked for is missing from the answer.",
+        "false": "Everything the input asked for appears in the answer."
+      }
+    },
+    "only-given-sources": {
+      "type": "noul",
+      "severity": "hard",
+      "threshold": 0.6,
+      "instructions": "The answer draws on a source that the input did not provide.",
+      "criteria": {
+        "true": "The answer cites something absent from the material in the input.",
+        "false": "Every source the answer leans on came with the input."
+      }
+    },
+    "repetition": {
+      "type": "noul",
+      "severity": "advisory",
+      "threshold": 0.65,
+      "instructions": "The answer makes the same point more than once.",
+      "criteria": {
+        "true": "Two passages say the same thing in different words.",
+        "false": "Each passage adds something the others do not."
+      }
+    },
+    "hedging": {
+      "type": "noul",
+      "severity": "advisory",
+      "threshold": 0.65,
+      "instructions": "The answer hedges where the input asked for a direct statement.",
+      "criteria": {
+        "true": "Qualifiers soften a claim the input asked to be made plainly.",
+        "false": "The answer commits to what it says."
+      }
+    }
+  }
+}

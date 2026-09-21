@@ -1,0 +1,63 @@
+{
+  "name": "jevidence",
+  "version": "0.1.0",
+  "description": "Measure LLM agent and prompt performance with typed questions answered by TypeSafe AI's Jev.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.22.0",
+  "files": [
+    "dist",
+    "panels",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./panels/*.json": "./panels/*.json",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "jevidence": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "llm",
+    "evaluation",
+    "evals",
+    "jev",
+    "typesafe",
+    "judge",
+    "calibration",
+    "agents"
+  ],
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "@typesafe-ai/sdk": "*"
+  },
+  "peerDependenciesMeta": {
+    "@typesafe-ai/sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
