@@ -73,7 +73,12 @@ export interface LintIssue {
 const text = (value: JsonValue | undefined): string => (typeof value === 'string' ? value : value == null ? '' : JSON.stringify(value));
 const words = (s: string) => s.trim().split(/\s+/).filter(Boolean);
 
-const NO_MATCH = /\b(none|no[-_ ]?match|neither|other|not[-_ ]applicable|n\/a|unclear|unknown)\b/i;
+// An option that means "none of these". Labels are written with underscores, hyphens or spaces
+// depending on the author's habit, and an underscore is a word character, so `says_nothing` never
+// reached a `\b`-anchored pattern. Flatten the separators first, then look for the phrase.
+const NO_MATCH = /\b(none|nothing|no match|nomatch|neither|other|not applicable|n a|na|unclear|unknown|not an issue|no issue)\b/i;
+
+const meansNoMatch = (label: string): boolean => NO_MATCH.test(label.replace(/[-_/]+/g, ' '));
 
 /**
  * The habits that make a typed question answer badly. Errors are worth refusing over; warnings
@@ -122,7 +127,7 @@ export function lintPanel(panel: Panel): LintIssue[] {
       const labels = Object.keys(q.criteria);
       if (labels.length < 2) issues.push({ questionId: id, rule: 'choice-options', severity: 'error', message: 'a choice needs at least two options' });
       if (labels.length > 255) issues.push({ questionId: id, rule: 'choice-options', severity: 'error', message: 'a choice takes at most 255 options' });
-      if (!labels.some((l) => NO_MATCH.test(l))) {
+      if (!labels.some(meansNoMatch)) {
         issues.push({
           questionId: id,
           rule: 'choice-no-match',

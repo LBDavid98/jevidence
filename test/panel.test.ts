@@ -69,6 +69,22 @@ describe('panels', () => {
     expect(lintPanel(withNone).find((i) => i.rule === 'choice-no-match')).toBeUndefined();
   });
 
+  it('reads an underscored option as the way out', () => {
+    const variants = [
+      { supports: 'it supports', contradicts: 'it contradicts', says_nothing: 'it says nothing' },
+      { cut_sentence: 'cut it', reword: 'reword it', not_an_issue: 'nothing to fix' },
+      { a: 'a', b: 'b', 'n-a': 'not applicable' },
+      { a: 'a', b: 'b', 'no match': 'no match' },
+      { a: 'a', b: 'b', unknown: 'unknown' },
+      { a: 'a', b: 'b', other: 'other' },
+      { a: 'a', b: 'b', none: 'none' },
+    ];
+    for (const criteria of variants) {
+      const panel = parsePanel({ ...good, questions: { pick: { type: 'choice', instructions: 'Which of these describes the line?', criteria } } });
+      expect(lintPanel(panel).find((i) => i.rule === 'choice-no-match')).toBeUndefined();
+    }
+  });
+
   it('warns when the instructions lean on the id', () => {
     const panel = parsePanel({ ...good, questions: { jargon: { type: 'noul', instructions: 'Jargon?' } } });
     expect(lintPanel(panel).find((i) => i.rule === 'instructions-standalone')?.severity).toBe('warn');

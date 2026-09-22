@@ -1,6 +1,6 @@
 {
   "name": "jevidence",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Measure LLM agent and prompt performance with typed questions answered by TypeSafe AI's Jev.",
   "license": "MIT",
   "type": "module",
