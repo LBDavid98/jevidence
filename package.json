@@ -59,5 +59,14 @@
     "tsup": "^8.5.0",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
+  },
+  "author": "David (https://github.com/LBDavid98)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LBDavid98/jevidence.git"
+  },
+  "homepage": "https://github.com/LBDavid98/jevidence#readme",
+  "bugs": {
+    "url": "https://github.com/LBDavid98/jevidence/issues"
   }
 }
