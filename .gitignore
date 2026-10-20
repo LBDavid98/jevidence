@@ -12,3 +12,7 @@ BACKLOG.MD
 governance/governance-graph.json
 .scrumux/events.jsonl
 .scratch/
+
+# scrumux harness: what .claude/DEPLOYED lists must be tracked (csdk scrumux deploy)
+!.claude/dist/
+!.claude/dist/*

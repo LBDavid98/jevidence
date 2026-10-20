@@ -1,0 +1,11 @@
+{
+  "built_at": "2026-10-20",
+  "files": {
+    ".claude/dist/scrumux.mjs": "5655f745366831c1afe987c35cda8dec5d43263b463fd19e29d299852e6c5352",
+    ".claude/dist/block-destructive.mjs": "04f8943c9f8ccdb9a13dfe38bfbb5870c3149b8eddd319ea3adcc1f13203e83a",
+    ".claude/dist/block-secret-reads.mjs": "9c0a45c1fa10df55cf89a266864ae472d3ef851ae629558d4f34443843186b2e",
+    ".claude/dist/block-upstream-edit.mjs": "adeb1100f1f28f96f9ee02033371c7e33e8b9d7b32a237ebf7268c5c1fe360a2",
+    ".claude/dist/block-direct-llm.mjs": "a43d6b08473c5a3a52b5a9a552de490be83b2dc23486ebbc3638cd5c837953cd",
+    ".claude/dist/session-guard.mjs": "f9ad237634afbe11b20d724f709e6b1f0017ecafd4deaceafeb1a82cbdc59a65"
+  }
+}
