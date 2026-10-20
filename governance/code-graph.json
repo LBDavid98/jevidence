@@ -1,0 +1,633 @@
+{
+  "root": "/srv/apps/jevidence",
+  "files": [
+    ".claude/scripts/scrumux",
+    "src/cli.ts",
+    "src/core/budget.ts",
+    "src/core/calibrate.ts",
+    "src/core/client.ts",
+    "src/core/hash.ts",
+    "src/core/ledger.ts",
+    "src/core/measure.ts",
+    "src/core/panel.ts",
+    "src/core/policy.ts",
+    "src/core/replay.ts",
+    "src/core/report.ts",
+    "src/core/segment.ts",
+    "src/core/types.ts",
+    "src/core/wire.ts",
+    "src/index.ts",
+    "test/budget.test.ts",
+    "test/calibrate.test.ts",
+    "test/cli.test.ts",
+    "test/client.test.ts",
+    "test/hash.test.ts",
+    "test/helpers.ts",
+    "test/ledger.test.ts",
+    "test/measure.test.ts",
+    "test/panel.test.ts",
+    "test/panels.test.ts",
+    "test/policy.test.ts",
+    "test/replay.test.ts",
+    "test/report.test.ts",
+    "test/segment.test.ts",
+    "test/types.test.ts",
+    "tsup.config.ts",
+    "vitest.config.ts"
+  ],
+  "symbols": {
+    "src/cli.ts::run": {
+      "id": "src/cli.ts::run",
+      "name": "run",
+      "file": "src/cli.ts",
+      "lang": "typescript",
+      "line": 105
+    },
+    "src/cli.ts::readLabels": {
+      "id": "src/cli.ts::readLabels",
+      "name": "readLabels",
+      "file": "src/cli.ts",
+      "lang": "typescript",
+      "line": 75
+    },
+    "src/cli.ts::clientFrom": {
+      "id": "src/cli.ts::clientFrom",
+      "name": "clientFrom",
+      "file": "src/cli.ts",
+      "lang": "typescript",
+      "line": 60
+    },
+    "src/cli.ts::write": {
+      "id": "src/cli.ts::write",
+      "name": "write",
+      "file": "src/cli.ts",
+      "lang": "typescript",
+      "line": 54
+    },
+    "src/cli.ts::parseArgs": {
+      "id": "src/cli.ts::parseArgs",
+      "name": "parseArgs",
+      "file": "src/cli.ts",
+      "lang": "typescript",
+      "line": 22
+    },
+    "src/core/budget.ts::planChunks": {
+      "id": "src/core/budget.ts::planChunks",
+      "name": "planChunks",
+      "file": "src/core/budget.ts",
+      "lang": "typescript",
+      "line": 42
+    },
+    "src/core/budget.ts::constructor": {
+      "id": "src/core/budget.ts::constructor",
+      "name": "constructor",
+      "file": "src/core/budget.ts",
+      "lang": "typescript",
+      "line": 26
+    },
+    "src/core/budget.ts::estimateTokens": {
+      "id": "src/core/budget.ts::estimateTokens",
+      "name": "estimateTokens",
+      "file": "src/core/budget.ts",
+      "lang": "typescript",
+      "line": 12
+    },
+    "src/core/calibrate.ts::calibrationMarkdown": {
+      "id": "src/core/calibrate.ts::calibrationMarkdown",
+      "name": "calibrationMarkdown",
+      "file": "src/core/calibrate.ts",
+      "lang": "typescript",
+      "line": 231
+    },
+    "src/core/calibrate.ts::calibrate": {
+      "id": "src/core/calibrate.ts::calibrate",
+      "name": "calibrate",
+      "file": "src/core/calibrate.ts",
+      "lang": "typescript",
+      "line": 161
+    },
+    "src/core/calibrate.ts::reliability": {
+      "id": "src/core/calibrate.ts::reliability",
+      "name": "reliability",
+      "file": "src/core/calibrate.ts",
+      "lang": "typescript",
+      "line": 142
+    },
+    "src/core/calibrate.ts::counts": {
+      "id": "src/core/calibrate.ts::counts",
+      "name": "counts",
+      "file": "src/core/calibrate.ts",
+      "lang": "typescript",
+      "line": 127
+    },
+    "src/core/calibrate.ts::pr": {
+      "id": "src/core/calibrate.ts::pr",
+      "name": "pr",
+      "file": "src/core/calibrate.ts",
+      "lang": "typescript",
+      "line": 120
+    },
+    "src/core/calibrate.ts::joinLabels": {
+      "id": "src/core/calibrate.ts::joinLabels",
+      "name": "joinLabels",
+      "file": "src/core/calibrate.ts",
+      "lang": "typescript",
+      "line": 20
+    },
+    "src/core/client.ts::fakeClient": {
+      "id": "src/core/client.ts::fakeClient",
+      "name": "fakeClient",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 412
+    },
+    "src/core/client.ts::judge": {
+      "id": "src/core/client.ts::judge",
+      "name": "judge",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 211
+    },
+    "src/core/client.ts::errorFor": {
+      "id": "src/core/client.ts::errorFor",
+      "name": "errorFor",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 403
+    },
+    "src/core/client.ts::instructionText": {
+      "id": "src/core/client.ts::instructionText",
+      "name": "instructionText",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 399
+    },
+    "src/core/client.ts::seededUnit": {
+      "id": "src/core/client.ts::seededUnit",
+      "name": "seededUnit",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 395
+    },
+    "src/core/client.ts::sdkClient": {
+      "id": "src/core/client.ts::sdkClient",
+      "name": "sdkClient",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 299
+    },
+    "src/core/client.ts::fromSdkError": {
+      "id": "src/core/client.ts::fromSdkError",
+      "name": "fromSdkError",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 286
+    },
+    "src/core/client.ts::httpClient": {
+      "id": "src/core/client.ts::httpClient",
+      "name": "httpClient",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 196
+    },
+    "src/core/client.ts::parseJudgeBody": {
+      "id": "src/core/client.ts::parseJudgeBody",
+      "name": "parseJudgeBody",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 177
+    },
+    "src/core/client.ts::asNumber": {
+      "id": "src/core/client.ts::asNumber",
+      "name": "asNumber",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 172
+    },
+    "src/core/client.ts::readJson": {
+      "id": "src/core/client.ts::readJson",
+      "name": "readJson",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 164
+    },
+    "src/core/client.ts::retryAfterMs": {
+      "id": "src/core/client.ts::retryAfterMs",
+      "name": "retryAfterMs",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 154
+    },
+    "src/core/client.ts::constructor": {
+      "id": "src/core/client.ts::constructor",
+      "name": "constructor",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 71
+    },
+    "src/core/client.ts::estimateCostUSD": {
+      "id": "src/core/client.ts::estimateCostUSD",
+      "name": "estimateCostUSD",
+      "file": "src/core/client.ts",
+      "lang": "typescript",
+      "line": 13
+    },
+    "src/core/hash.ts::stateText": {
+      "id": "src/core/hash.ts::stateText",
+      "name": "stateText",
+      "file": "src/core/hash.ts",
+      "lang": "typescript",
+      "line": 24
+    },
+    "src/core/hash.ts::sha256": {
+      "id": "src/core/hash.ts::sha256",
+      "name": "sha256",
+      "file": "src/core/hash.ts",
+      "lang": "typescript",
+      "line": 19
+    },
+    "src/core/hash.ts::hashState": {
+      "id": "src/core/hash.ts::hashState",
+      "name": "hashState",
+      "file": "src/core/hash.ts",
+      "lang": "typescript",
+      "line": 15
+    },
+    "src/core/hash.ts::stableStringify": {
+      "id": "src/core/hash.ts::stableStringify",
+      "name": "stableStringify",
+      "file": "src/core/hash.ts",
+      "lang": "typescript",
+      "line": 5
+    },
+    "src/core/ledger.ts::jsonlLedger": {
+      "id": "src/core/ledger.ts::jsonlLedger",
+      "name": "jsonlLedger",
+      "file": "src/core/ledger.ts",
+      "lang": "typescript",
+      "line": 101
+    },
+    "src/core/ledger.ts::query": {
+      "id": "src/core/ledger.ts::query",
+      "name": "query",
+      "file": "src/core/ledger.ts",
+      "lang": "typescript",
+      "line": 60
+    },
+    "src/core/ledger.ts::append": {
+      "id": "src/core/ledger.ts::append",
+      "name": "append",
+      "file": "src/core/ledger.ts",
+      "lang": "typescript",
+      "line": 57
+    },
+    "src/core/ledger.ts::writeRecords": {
+      "id": "src/core/ledger.ts::writeRecords",
+      "name": "writeRecords",
+      "file": "src/core/ledger.ts",
+      "lang": "typescript",
+      "line": 96
+    },
+    "src/core/ledger.ts::readRecords": {
+      "id": "src/core/ledger.ts::readRecords",
+      "name": "readRecords",
+      "file": "src/core/ledger.ts",
+      "lang": "typescript",
+      "line": 87
+    },
+    "src/core/ledger.ts::parseRecords": {
+      "id": "src/core/ledger.ts::parseRecords",
+      "name": "parseRecords",
+      "file": "src/core/ledger.ts",
+      "lang": "typescript",
+      "line": 70
+    },
+    "src/core/ledger.ts::memoryLedger": {
+      "id": "src/core/ledger.ts::memoryLedger",
+      "name": "memoryLedger",
+      "file": "src/core/ledger.ts",
+      "lang": "typescript",
+      "line": 53
+    },
+    "src/core/ledger.ts::clear": {
+      "id": "src/core/ledger.ts::clear",
+      "name": "clear",
+      "file": "src/core/ledger.ts",
+      "lang": "typescript",
+      "line": 63
+    },
+    "src/core/ledger.ts::filterRecords": {
+      "id": "src/core/ledger.ts::filterRecords",
+      "name": "filterRecords",
+      "file": "src/core/ledger.ts",
+      "lang": "typescript",
+      "line": 42
+    },
+    "src/core/ledger.ts::matchesQuery": {
+      "id": "src/core/ledger.ts::matchesQuery",
+      "name": "matchesQuery",
+      "file": "src/core/ledger.ts",
+      "lang": "typescript",
+      "line": 31
+    },
+    "src/core/measure.ts::measure": {
+      "id": "src/core/measure.ts::measure",
+      "name": "measure",
+      "file": "src/core/measure.ts",
+      "lang": "typescript",
+      "line": 202
+    },
+    "src/core/measure.ts::constructor": {
+      "id": "src/core/measure.ts::constructor",
+      "name": "constructor",
+      "file": "src/core/measure.ts",
+      "lang": "typescript",
+      "line": 174
+    },
+    "src/core/measure.ts::runPanel": {
+      "id": "src/core/measure.ts::runPanel",
+      "name": "runPanel",
+      "file": "src/core/measure.ts",
+      "lang": "typescript",
+      "line": 79
+    },
+    "src/core/measure.ts::defaultOutputText": {
+      "id": "src/core/measure.ts::defaultOutputText",
+      "name": "defaultOutputText",
+      "file": "src/core/measure.ts",
+      "lang": "typescript",
+      "line": 27
+    },
+    "src/core/measure.ts::asJson": {
+      "id": "src/core/measure.ts::asJson",
+      "name": "asJson",
+      "file": "src/core/measure.ts",
+      "lang": "typescript",
+      "line": 16
+    },
+    "src/core/panel.ts::questionThreshold": {
+      "id": "src/core/panel.ts::questionThreshold",
+      "name": "questionThreshold",
+      "file": "src/core/panel.ts",
+      "lang": "typescript",
+      "line": 181
+    },
+    "src/core/panel.ts::toWireQuestions": {
+      "id": "src/core/panel.ts::toWireQuestions",
+      "name": "toWireQuestions",
+      "file": "src/core/panel.ts",
+      "lang": "typescript",
+      "line": 174
+    },
+    "src/core/panel.ts::toWireQuestion": {
+      "id": "src/core/panel.ts::toWireQuestion",
+      "name": "toWireQuestion",
+      "file": "src/core/panel.ts",
+      "lang": "typescript",
+      "line": 167
+    },
+    "src/core/panel.ts::lintPanel": {
+      "id": "src/core/panel.ts::lintPanel",
+      "name": "lintPanel",
+      "file": "src/core/panel.ts",
+      "lang": "typescript",
+      "line": 87
+    },
+    "src/core/panel.ts::panelToJSON": {
+      "id": "src/core/panel.ts::panelToJSON",
+      "name": "panelToJSON",
+      "file": "src/core/panel.ts",
+      "lang": "typescript",
+      "line": 52
+    },
+    "src/core/panel.ts::loadPanel": {
+      "id": "src/core/panel.ts::loadPanel",
+      "name": "loadPanel",
+      "file": "src/core/panel.ts",
+      "lang": "typescript",
+      "line": 47
+    },
+    "src/core/panel.ts::parsePanel": {
+      "id": "src/core/panel.ts::parsePanel",
+      "name": "parsePanel",
+      "file": "src/core/panel.ts",
+      "lang": "typescript",
+      "line": 40
+    },
+    "src/core/panel.ts::safeJson": {
+      "id": "src/core/panel.ts::safeJson",
+      "name": "safeJson",
+      "file": "src/core/panel.ts",
+      "lang": "typescript",
+      "line": 31
+    },
+    "src/core/panel.ts::validatePanel": {
+      "id": "src/core/panel.ts::validatePanel",
+      "name": "validatePanel",
+      "file": "src/core/panel.ts",
+      "lang": "typescript",
+      "line": 21
+    },
+    "src/core/panel.ts::constructor": {
+      "id": "src/core/panel.ts::constructor",
+      "name": "constructor",
+      "file": "src/core/panel.ts",
+      "lang": "typescript",
+      "line": 10
+    },
+    "src/core/policy.ts::defaultRetryInput": {
+      "id": "src/core/policy.ts::defaultRetryInput",
+      "name": "defaultRetryInput",
+      "file": "src/core/policy.ts",
+      "lang": "typescript",
+      "line": 96
+    },
+    "src/core/policy.ts::decide": {
+      "id": "src/core/policy.ts::decide",
+      "name": "decide",
+      "file": "src/core/policy.ts",
+      "lang": "typescript",
+      "line": 79
+    },
+    "src/core/policy.ts::applyThresholds": {
+      "id": "src/core/policy.ts::applyThresholds",
+      "name": "applyThresholds",
+      "file": "src/core/policy.ts",
+      "lang": "typescript",
+      "line": 61
+    },
+    "src/core/policy.ts::escalate": {
+      "id": "src/core/policy.ts::escalate",
+      "name": "escalate",
+      "file": "src/core/policy.ts",
+      "lang": "typescript",
+      "line": 56
+    },
+    "src/core/policy.ts::crossesThreshold": {
+      "id": "src/core/policy.ts::crossesThreshold",
+      "name": "crossesThreshold",
+      "file": "src/core/policy.ts",
+      "lang": "typescript",
+      "line": 12
+    },
+    "src/core/replay.ts::replay": {
+      "id": "src/core/replay.ts::replay",
+      "name": "replay",
+      "file": "src/core/replay.ts",
+      "lang": "typescript",
+      "line": 73
+    },
+    "src/core/replay.ts::stateFor": {
+      "id": "src/core/replay.ts::stateFor",
+      "name": "stateFor",
+      "file": "src/core/replay.ts",
+      "lang": "typescript",
+      "line": 64
+    },
+    "src/core/replay.ts::readDataset": {
+      "id": "src/core/replay.ts::readDataset",
+      "name": "readDataset",
+      "file": "src/core/replay.ts",
+      "lang": "typescript",
+      "line": 53
+    },
+    "src/core/report.ts::reportMarkdown": {
+      "id": "src/core/report.ts::reportMarkdown",
+      "name": "reportMarkdown",
+      "file": "src/core/report.ts",
+      "lang": "typescript",
+      "line": 207
+    },
+    "src/core/report.ts::report": {
+      "id": "src/core/report.ts::report",
+      "name": "report",
+      "file": "src/core/report.ts",
+      "lang": "typescript",
+      "line": 169
+    },
+    "src/core/report.ts::driftBetween": {
+      "id": "src/core/report.ts::driftBetween",
+      "name": "driftBetween",
+      "file": "src/core/report.ts",
+      "lang": "typescript",
+      "line": 142
+    },
+    "src/core/report.ts::group": {
+      "id": "src/core/report.ts::group",
+      "name": "group",
+      "file": "src/core/report.ts",
+      "lang": "typescript",
+      "line": 112
+    },
+    "src/core/report.ts::summarise": {
+      "id": "src/core/report.ts::summarise",
+      "name": "summarise",
+      "file": "src/core/report.ts",
+      "lang": "typescript",
+      "line": 89
+    },
+    "src/core/report.ts::latency": {
+      "id": "src/core/report.ts::latency",
+      "name": "latency",
+      "file": "src/core/report.ts",
+      "lang": "typescript",
+      "line": 78
+    },
+    "src/core/report.ts::percentile": {
+      "id": "src/core/report.ts::percentile",
+      "name": "percentile",
+      "file": "src/core/report.ts",
+      "lang": "typescript",
+      "line": 72
+    },
+    "src/core/segment.ts::segment": {
+      "id": "src/core/segment.ts::segment",
+      "name": "segment",
+      "file": "src/core/segment.ts",
+      "lang": "typescript",
+      "line": 70
+    },
+    "src/core/segment.ts::wholeText": {
+      "id": "src/core/segment.ts::wholeText",
+      "name": "wholeText",
+      "file": "src/core/segment.ts",
+      "lang": "typescript",
+      "line": 64
+    },
+    "src/core/segment.ts::splitParagraphs": {
+      "id": "src/core/segment.ts::splitParagraphs",
+      "name": "splitParagraphs",
+      "file": "src/core/segment.ts",
+      "lang": "typescript",
+      "line": 42
+    },
+    "src/core/segment.ts::splitSentences": {
+      "id": "src/core/segment.ts::splitSentences",
+      "name": "splitSentences",
+      "file": "src/core/segment.ts",
+      "lang": "typescript",
+      "line": 27
+    },
+    "src/core/wire.ts::segmentOfInstructions": {
+      "id": "src/core/wire.ts::segmentOfInstructions",
+      "name": "segmentOfInstructions",
+      "file": "src/core/wire.ts",
+      "lang": "typescript",
+      "line": 28
+    },
+    "src/core/wire.ts::withSegment": {
+      "id": "src/core/wire.ts::withSegment",
+      "name": "withSegment",
+      "file": "src/core/wire.ts",
+      "lang": "typescript",
+      "line": 23
+    },
+    "src/core/wire.ts::parseQuestionId": {
+      "id": "src/core/wire.ts::parseQuestionId",
+      "name": "parseQuestionId",
+      "file": "src/core/wire.ts",
+      "lang": "typescript",
+      "line": 8
+    },
+    "test/calibrate.test.ts::synthetic": {
+      "id": "test/calibrate.test.ts::synthetic",
+      "name": "synthetic",
+      "file": "test/calibrate.test.ts",
+      "lang": "typescript",
+      "line": 19
+    },
+    "test/client.test.ts::systemOne": {
+      "id": "test/client.test.ts::systemOne",
+      "name": "systemOne",
+      "file": "test/client.test.ts",
+      "lang": "typescript",
+      "line": 134
+    },
+    "test/measure.test.ts::judge": {
+      "id": "test/measure.test.ts::judge",
+      "name": "judge",
+      "file": "test/measure.test.ts",
+      "lang": "typescript",
+      "line": 76
+    }
+  },
+  "edges": [],
+  "parse_errors": [],
+  "coverage": {
+    "indexed": 33,
+    "by_language": {
+      "javascript": 1,
+      "typescript": 32
+    },
+    "skipped": [],
+    "not_source": 46
+  },
+  "provenance": {
+    "built_at": "2026-10-20T15:50:20Z",
+    "built_at_epoch": 1792511420.124,
+    "commit": "1bb9c96f9d6f570ff57f8451a0f3b3ea9c41a771",
+    "dirty": true,
+    "root": "/srv/apps/jevidence",
+    "builder": "scrumux graph code build"
+  }
+}

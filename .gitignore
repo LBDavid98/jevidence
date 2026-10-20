@@ -3,3 +3,12 @@ dist/
 *.tsbuildinfo
 .DS_Store
 coverage/
+
+# Written by scrumux, not by hand: the rendered views, the walls' event log and the session scratch directory.
+# The JSON under governance/ is the source of truth; these are projections.
+AI_LOG.MD
+DECISIONS.MD
+BACKLOG.MD
+governance/governance-graph.json
+.scrumux/events.jsonl
+.scratch/
