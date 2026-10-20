@@ -3684,6 +3684,7 @@ function pyFloatRepr(n) {
 var IndexUnreadable = class extends Error {
 };
 var SKIP_DIRS = /* @__PURE__ */ new Set([".git", ".venv", "node_modules", "__pycache__", "dist", "build"]);
+var isHidden = (name) => name.startsWith(".");
 var EXTENSION_LANGUAGE = {
   ".py": "python",
   ".sh": "bash",
@@ -3764,7 +3765,7 @@ function* walkTree(root) {
     dirs.sort();
     for (let i = dirs.length - 1; i >= 0; i -= 1) {
       const d = dirs[i];
-      if (SKIP_DIRS.has(d)) continue;
+      if (SKIP_DIRS.has(d) || isHidden(d)) continue;
       stack.push(join13(dir, d));
     }
   }
