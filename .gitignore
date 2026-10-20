@@ -15,8 +15,12 @@ governance/governance-graph.json
 
 # scrumux harness: what .claude/DEPLOYED lists must be tracked (csdk scrumux deploy)
 !.claude/dist/
-!.claude/dist/*
-
-# scrumux harness: what .claude/DEPLOYED lists must be tracked (csdk scrumux deploy)
-!governance/governance-graph.json
+.claude/dist/*
+!.claude/dist/BUILD.json
+!.claude/dist/block-destructive.mjs
+!.claude/dist/block-direct-llm.mjs
+!.claude/dist/block-secret-reads.mjs
+!.claude/dist/block-upstream-edit.mjs
+!.claude/dist/scrumux.mjs
+!.claude/dist/session-guard.mjs
 # end scrumux harness
