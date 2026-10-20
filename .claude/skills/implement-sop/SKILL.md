@@ -7,7 +7,7 @@ description: The SOP for implementing a sprint task in this harness - framed by 
 
 Two scripts bracket the work: `scrumux task brief` opens (gates + context),
 `scrumux task verify` closes (evidence). Their exit codes decide, not your
-impression (boundary 5).
+impression.
 
 Copy this checklist:
 
@@ -15,7 +15,7 @@ Copy this checklist:
 Implementation Progress:
 - [ ] 1. task-brief — gates pass, frame stated
 - [ ] 2. In progress via scrumux; implement within scope
-- [ ] 3. Document per D-0006
+- [ ] 3. Document what changed
 - [ ] 4. Unit tests afterwards, same task
 - [ ] 5. task-verify — exit 0, receipt written
 - [ ] 6. Receipt log; in_review
@@ -33,7 +33,7 @@ Implementation Progress:
 - **Exit 0**: state the frame in one message — sprint, task, acceptance
   check, verification command — then continue.
 
-The brief's reading list IS your context (D-0005): open those files for
+The brief's reading list IS your context: open those files for
 those reasons. It also prints the law bearing on the file set and, for
 every file the order CHANGES, the code graph's callers and callees —
 who breaks if you touch it, and what it leans on. Read that before the
@@ -47,7 +47,7 @@ one-at-a-time). Implement inside `--scope`; the OUT list is binding.
 the CLI as `.claude/scripts/scrumux` — `../.claude/scripts/scrumux` from a
 subdirectory matches no allow rule and is refused. Throwaway files — an
 export to diff, a probe script — go in `.scratch/` at that root: it is
-gitignored, and `rm -rf .scratch/<name>` is allowed (D-S040). Scratch
+gitignored, and `rm -rf .scratch/<name>` is allowed. Scratch
 anywhere else is left for the operator to keep out of a commit, and a
 recursive delete of it is refused.
 
@@ -60,11 +60,11 @@ main checkout, not the worktree's stale copy — so read them through the CLI
 Something **broke** outside scope — you saw it behave wrong and can name
 the command that shows it: `scrumux issue new --type defect --source implement-sop
 --summary ... --fix ...`, one line, then keep moving. Never fix it in-line
-(boundary 3), and never go looking for more. Something merely untidy,
-inconsistent or improvable is **not filed at all** (D-0079).
+— and never go looking for more. Something merely untidy,
+inconsistent or improvable is **not filed at all**.
 
 The report is read by a validator who was not there, so it carries the
-site and the repro. One real capture, verbatim (I-0153):
+site and the repro. One real capture, verbatim:
 
 ```
 .claude/scripts/scrumux issue new --type harness --source implement-sop \
@@ -80,7 +80,7 @@ If the CLI genuinely cannot express what the task needs, say so to the
 human and stop. Do not work around it, and do not build a way around it —
 the harness is frozen and it is not the job.
 
-**Stub-and-park (D-0015)** — when an out-of-scope blocker halts the task
+**Stub-and-park** — when an out-of-scope blocker halts the task
 itself: raise the blocker as a scrumux issue, then stub the blocking
 boundary with a grep-able marker naming that issue — `STUB(I-XXXX)`
 verbatim in a comment at the stubbed site — and keep building against
@@ -88,16 +88,16 @@ the stub. task-verify may pass with a marked stub in place; that is the
 lane working, not a cheat. session-check tracks every live marker (WARN
 while the linked issue is open) and FAILs any marker whose issue is
 resolved, rejected, or unknown — de-stubbing is the linked issue's fix,
-never a drive-by. For LLM-call boundaries this is D-0019's "stubbed"
+never a drive-by. For an LLM-call boundary this is the "stubbed"
 lane: a marked stub is discipline; a silent mock is not.
 
-**Step 3 — document** (D-0006): docstrings on public functions/modules
+**Step 3 — document:** docstrings on public functions/modules
 (purpose + constraints); inline comments only where the code cannot say
 why; README/docs updated when user-visible behavior changes.
 
 **Step 4 — tests afterwards, same task.** Write unit tests for the new
 behavior after implementing it. No mock LLM calls — real gateway calls
-or skip once proven (D-0001 applies to test traffic too).
+or skip once proven (the no-direct-llm-calls rule binds test traffic too).
 
 **Step 5 — run exactly:**
 
@@ -112,7 +112,7 @@ refuses a red one — so a verify you did not run leaves nothing for
 User to accept.
 
 - **Exit 1**: stay in_progress. If the cause isn't obvious, dispatch the
-  **debugger agent** (read-only, D-0007) and implement its proposed fix
+  **debugger agent** (read-only) and implement its proposed fix
   — never patch around a failure you don't understand. Then re-run.
 - **Exit 0**: continue.
 - **The check needs a step only the operator can take** (a deploy you cannot
@@ -121,7 +121,7 @@ User to accept.
   and stop. Do not wait in a loop and do not fake the step — the operator
   sees the reason in the app, takes the step, verifies and moves the task on.
 
-**A green receipt is not a check that proves its claim (§4b).** Before
+**A green receipt is not a check that proves its claim.** Before
 you hand the task back, apply the reader's question to your own verify
 command: *what is the weakest artifact that passes it — would I accept
 it?* If a wrong or hollow artifact passes, the command is a proxy — fix
@@ -132,7 +132,7 @@ input returns one row — a safe parameterized form passes that
 identically; it needs a command where an injected value behaves as
 injection: extra rows, or a syntax error tied to the injected quote.
 Record your answer in Step 6's `--did`; the harness holds it as attested,
-never verified (§15h), and a second party reading the work is the
+never verified, and a second party reading the work is the
 backstop.
 
 Five hollow greens that shipped in a real build, each caught only by an
@@ -190,12 +190,12 @@ does not carry a story about the work. Composed prose belongs in the
 order that framed the task and in what you say to User — not
 in the ledger, where nobody can check it.
 
-One real entry from this repo, verbatim, as the shape to copy (L-0285):
+One real entry, as the shape to copy (its record ids replaced by placeholders):
 
 ```
 .claude/scripts/scrumux log new --task T-XXXX \
-  --title "The prune stopped eating the two files deploy promises never to overwrite (I-0152, I-0153)" \
-  --did "harness deploy's seeding lane creates .claude/rules/project-standards.md and .claude/project-walls.conf create-if-absent; the I-0143 prune then removed any path the previous manifest names that payload.list lacks. Fixed by writing each seeded path into TMPD/seeded.list and skipping it in the prune. sh tests/harness-tests.sh rc=0; 3 files changed, 61 insertions." \
+  --title "The prune stopped eating the two files deploy promises never to overwrite (I-XXXX, I-XXXX)" \
+  --did "harness deploy's seeding lane creates .claude/rules/project-standards.md and .claude/project-walls.conf create-if-absent; the manifest prune then removed any path the previous manifest names that payload.list lacks. Fixed by writing each seeded path into TMPD/seeded.list and skipping it in the prune. sh tests/harness-tests.sh rc=0; 3 files changed, 61 insertions." \
   --verified "Planted first: 11 new assertions in tests/harness-tests.sh shown FAILING against 444dfd1 in a detached worktree, including 'deploy DESTROYED .claude/rules/project-standards.md because a previous manifest claimed it'. After the fix: harness-tests exits 0." \
   --pending "seals.json is a record records-check reads and is correctly left out, so the first views render on a never-sealed target still leaves that one file untracked"
 ```
@@ -214,6 +214,6 @@ Read the three fields against the bad version of each:
 `scrumux help log` prints this again, and the refusal on a missing
 `--title` or `--did` carries it too.
 
-Acceptance is User's alone (boundary 2) — `scrumux task accept
+Acceptance is User's alone — `scrumux task accept
 T-XXXX --authority ...` only on their word, and it reads the receipt. Done
 means the acceptance check passed, not that the output looks done.

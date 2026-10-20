@@ -1,7 +1,10 @@
 {
   "built_at": "2026-10-20",
+  "source_commit": "32778fbba603c34fa3b6ac693b230d19fcfd73ea",
+  "source_dirty": false,
+  "standard": "2.0.0",
   "files": {
-    ".claude/dist/scrumux.mjs": "07cda33791a82e3ae4e62d649284a31e95d847f59123a70f131e4984d1447986",
+    ".claude/dist/scrumux.mjs": "13c10fb1783ed77ebed07c291dbd30bd3037c7ccc6329a64bcbe53ba12b5976b",
     ".claude/dist/block-destructive.mjs": "04f8943c9f8ccdb9a13dfe38bfbb5870c3149b8eddd319ea3adcc1f13203e83a",
     ".claude/dist/block-secret-reads.mjs": "9c0a45c1fa10df55cf89a266864ae472d3ef851ae629558d4f34443843186b2e",
     ".claude/dist/block-upstream-edit.mjs": "adeb1100f1f28f96f9ee02033371c7e33e8b9d7b32a237ebf7268c5c1fe360a2",

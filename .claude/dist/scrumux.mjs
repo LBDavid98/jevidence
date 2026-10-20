@@ -697,6 +697,10 @@ installed there.
 
   scrumux harness deploy <target> [--json]
   scrumux harness verify <target> [--json]
+  scrumux harness sequester <target> [--dry-run] [--keep PATH --reason R]... [--json]
+  scrumux harness digest <target> [--json]
+  scrumux harness readmit <target> <entry> [--to PATH] --reason R [--json]
+  scrumux harness readmit <target> --close --decision D-XXXX [--json]
 
 deploy reports every item as CREATED, UPDATED, UNCHANGED, REMOVED or
 KEPT by byte comparison (never timestamp) and fails if \`records check\`
@@ -718,6 +722,27 @@ is governed by what is installed there is decided by the project root that
 session was LAUNCHED with, and no command running inside it can change
 that. When $CLAUDE_PROJECT_DIR names a different repo, verify says so in a
 session-topology WARN \u2014 advisory, never part of the exit code.
+
+SEQUESTERED, NEVER POINTED AT (R-027). The instructions a repo carried
+before the harness \u2014 its own root CLAUDE.md, a CLAUDE.pre-harness.md an
+older deploy kept, AGENTS.md, GEMINI.md, .cursorrules, .windsurfrules,
+.github/copilot-instructions.md, .agent-control/, .cursor/, .codex/, and
+files under .claude/{rules,skills,agents,commands}/ the payload does not
+ship \u2014 are moved by deploy (and by sequester) to .claude/sequestered/,
+renamed *.sequestered with every leading dot spelled dot-, and recorded in
+.claude/SEQUESTERED.json. Tracked files move with git mv. A candidate that
+tracked code or config names is HELD in place and listed with file:line; an
+untracked one stays and is listed live; a nested CLAUDE.md or AGENTS.md is
+never moved; --keep leaves one where it is, with its reason recorded.
+
+digest is read-only review material: each sequestered or held prose file in
+units with file:line, flagged where a unit names a retired marker or repeats
+payload text; the held, nested and live files; settings variance. readmit
+copies one sequestered file back into force (default: appended to
+.claude/rules/project-standards.md under a heading) and records it;
+readmit --close records the ratified decision that closes the review, and
+the next deploy drops the note the constitution carries while it is open.
+verify reports sequestered-intact and instructions-live as advisories.
 `,
   health: `scrumux health \u2014 one verb, \`add\`.
 
@@ -3841,15 +3866,15 @@ function isStaleGraph(graph, root) {
   }
   const filesList = Array.isArray(graph["files"]) ? graph["files"] : [];
   const gone = [];
-  for (const rel of filesList) {
-    if (typeof rel !== "string") continue;
+  for (const rel2 of filesList) {
+    if (typeof rel2 !== "string") continue;
     let ok = false;
     try {
-      ok = statSync4(join13(root, rel)).isFile();
+      ok = statSync4(join13(root, rel2)).isFile();
     } catch {
       ok = false;
     }
-    if (!ok) gone.push(rel);
+    if (!ok) gone.push(rel2);
     if (gone.length >= 5) break;
   }
   if (changed.length > 0 && gone.length > 0) {
@@ -4102,22 +4127,22 @@ async function buildCodeGraph(root, codeRoot) {
     const parser = new PARSER_CTOR();
     try {
       for (const path of byLang.get(lang) ?? []) {
-        const rel = relKey(root, path);
-        files.push(rel);
+        const rel2 = relKey(root, path);
+        files.push(rel2);
         indexedByLang.set(lang, (indexedByLang.get(lang) ?? 0) + 1);
         const src = readFileSync10(path).toString("utf8");
-        parser.setLanguage(languageFor(entry, rel));
+        parser.setLanguage(languageFor(entry, rel2));
         const tree = parser.parse(src);
         if (tree === null) {
-          parseErrors.push(rel);
+          parseErrors.push(rel2);
           continue;
         }
         try {
-          if (tree.rootNode.hasError) parseErrors.push(rel);
+          if (tree.rootNode.hasError) parseErrors.push(rel2);
           walkParseTree(
             tree,
             src,
-            rel,
+            rel2,
             lang,
             defNodes,
             callNodes,
@@ -4147,10 +4172,10 @@ async function buildCodeGraph(root, codeRoot) {
     notSource
   );
 }
-function languageFor(entry, rel) {
+function languageFor(entry, rel2) {
   if (entry.dialects.size === 0) return entry.language;
-  const dot = rel.lastIndexOf(".");
-  const suffix = dot > 0 ? rel.slice(dot).toLowerCase() : "";
+  const dot = rel2.lastIndexOf(".");
+  const suffix = dot > 0 ? rel2.slice(dot).toLowerCase() : "";
   return entry.dialects.get(suffix) ?? entry.language;
 }
 var PARSER_CTOR = null;
@@ -4201,7 +4226,7 @@ function importedModules(node, src) {
   }
   return out;
 }
-function walkParseTree(tree, src, rel, lang, defNodes, callNodes, symbols, rawCalls, rawSources) {
+function walkParseTree(tree, src, rel2, lang, defNodes, callNodes, symbols, rawCalls, rawSources) {
   const stack = [[tree.rootNode, null]];
   while (stack.length > 0) {
     const [node, inherited] = stack.pop();
@@ -4209,11 +4234,11 @@ function walkParseTree(tree, src, rel, lang, defNodes, callNodes, symbols, rawCa
     if (defNodes.has(node.type)) {
       const name = definitionName(node, src, lang);
       if (name !== null && name !== "") {
-        const sid = `${rel}::${name}`;
+        const sid = `${rel2}::${name}`;
         symbols.set(sid, {
           id: sid,
           name,
-          file: rel,
+          file: rel2,
           lang,
           line: node.startPosition.row + 1
         });
@@ -4223,12 +4248,12 @@ function walkParseTree(tree, src, rel, lang, defNodes, callNodes, symbols, rawCa
       const callee = calleeName(node, src, lang);
       if (callee === "." || callee === "source") {
         const target = sourcedFile(node, src);
-        if (target !== null) rawSources.push([rel, target]);
+        if (target !== null) rawSources.push([rel2, target]);
       } else if (callee !== null && callee !== "") {
-        rawCalls.push([enclosing ?? rel, callee, rel]);
+        rawCalls.push([enclosing ?? rel2, callee, rel2]);
       }
     } else if (node.type === "import_statement" || node.type === "import_from_statement") {
-      for (const mod of importedModules(node, src)) rawSources.push([rel, mod]);
+      for (const mod of importedModules(node, src)) rawSources.push([rel2, mod]);
     }
     for (const child of node.children) {
       if (child !== null) stack.push([child, enclosing]);
@@ -5067,13 +5092,13 @@ function bearing(graph, paths, task) {
     pathRows.push({ path, relation, tasks: [...new Set(touching.map(([t]) => t))].sort(cmp2) });
     for (const [src, kind] of touching) {
       if (task !== null && src === task) continue;
-      const rel = task !== null ? relation : kind;
+      const rel2 = task !== null ? relation : kind;
       for (const rid of recordsAround(graph, src, adj)) {
         const nodeK = nodeKind(graph, rid);
         if (nodeK === null || !BEARING_KINDS.has(nodeK)) continue;
         const prev = found.get(rid);
-        if (prev === void 0 || prev.relation !== "changes" && rel === "changes") {
-          found.set(rid, { id: rid, kind: nodeK, path, relation: rel, via: src });
+        if (prev === void 0 || prev.relation !== "changes" && rel2 === "changes") {
+          found.set(rid, { id: rid, kind: nodeK, path, relation: rel2, via: src });
         }
       }
     }
@@ -5609,23 +5634,23 @@ var MODULE6 = {
 };
 
 // src/nouns/harness.ts
-import { accessSync as accessSync2, constants as constants2, statSync as statSync9 } from "node:fs";
+import { accessSync as accessSync2, constants as constants2, statSync as statSync11 } from "node:fs";
 import { resolve as resolve4 } from "node:path";
 
 // src/nouns/harness/deploy.ts
 import {
-  chmodSync as chmodSync3,
+  chmodSync as chmodSync5,
   copyFileSync as copyFileSync2,
-  mkdirSync as mkdirSync5,
-  readFileSync as readFileSync17,
-  statSync as statSync8,
+  mkdirSync as mkdirSync6,
+  readFileSync as readFileSync19,
+  statSync as statSync10,
   unlinkSync,
   utimesSync as utimesSync2,
-  writeFileSync as writeFileSync7,
+  writeFileSync as writeFileSync9,
   appendFileSync
 } from "node:fs";
-import { spawnSync as spawnSync6 } from "node:child_process";
-import { dirname as dirname8, join as join23 } from "node:path";
+import { spawnSync as spawnSync7 } from "node:child_process";
+import { dirname as dirname9, join as join25 } from "node:path";
 
 // src/nouns/harness/payload.ts
 import { opendirSync, readFileSync as readFileSync12 } from "node:fs";
@@ -5660,6 +5685,11 @@ var SURFACE_PROBES = [
   { name: "graph-code", argv: ".claude/scripts/scrumux graph code stats", refusal: "graph code: error: no index at" },
   { name: "graph-gov", argv: ".claude/scripts/scrumux graph gov stats", refusal: "" },
   { name: "harness", argv: ".claude/scripts/scrumux harness help", refusal: "" },
+  // R-027: the sequester verbs. A dry run and the digest write nothing; readmit
+  // of an entry no record can hold refuses before it reads or writes a file.
+  { name: "harness-sequester", argv: ".claude/scripts/scrumux harness sequester . --dry-run", refusal: "" },
+  { name: "harness-digest", argv: ".claude/scripts/scrumux harness digest .", refusal: "" },
+  { name: "harness-readmit", argv: ".claude/scripts/scrumux harness readmit . surface-probe --reason probe", refusal: "scrumux harness readmit: error: (no \\.claude/SEQUESTERED\\.json in|surface-probe is not a sequestered entry)" },
   { name: "health", argv: ".claude/scripts/scrumux health help", refusal: "" },
   { name: "issue", argv: ".claude/scripts/scrumux issue help", refusal: "" },
   { name: "log", argv: ".claude/scripts/scrumux log help", refusal: "" },
@@ -5680,9 +5710,9 @@ var SURFACE_PROBES = [
 ];
 var SURFACE_EXEMPT = [];
 var PROBE_TIMEOUT = 30;
-function srcPathOf(rel, srcClaude, srcRoot) {
-  if (rel.startsWith(".claude/")) return `${srcClaude}/${rel.slice(".claude/".length)}`;
-  return `${srcRoot}/${rel}`;
+function srcPathOf(rel2, srcClaude, srcRoot) {
+  if (rel2.startsWith(".claude/")) return `${srcClaude}/${rel2.slice(".claude/".length)}`;
+  return `${srcRoot}/${rel2}`;
 }
 function rawEntries(dir) {
   const out = [];
@@ -5724,8 +5754,8 @@ function parseExcludeList(text2) {
   }
   return rules;
 }
-function payloadExcluded(rel, rules) {
-  return rules.some((r) => r.kind === "prefix" ? rel.startsWith(r.path) : r.path === rel);
+function payloadExcluded(rel2, rules) {
+  return rules.some((r) => r.kind === "prefix" ? rel2.startsWith(r.path) : r.path === rel2);
 }
 function loadExcludeRules(srcClaude) {
   let text2;
@@ -5744,9 +5774,9 @@ function payloadFiles(dir, srcClaude, rules) {
     const name = abs.slice(abs.lastIndexOf("/") + 1);
     if (name.endsWith(".pyc") || name === ".DS_Store" || name.startsWith(".")) continue;
     if (abs.includes("__pycache__")) continue;
-    const rel = `.claude/${dir}/${abs.slice(base.length + 1)}`;
-    if (payloadExcluded(rel, rules)) continue;
-    out.push(rel);
+    const rel2 = `.claude/${dir}/${abs.slice(base.length + 1)}`;
+    if (payloadExcluded(rel2, rules)) continue;
+    out.push(rel2);
   }
   return out;
 }
@@ -5941,6 +5971,24 @@ function shebangOf(p) {
 // src/nouns/harness/manifest.ts
 import { readFileSync as readFileSync13, writeFileSync as writeFileSync5 } from "node:fs";
 import { join as join19 } from "node:path";
+function buildStamp(srcClaude) {
+  const p = join19(srcClaude, "dist/BUILD.json");
+  if (!isFile(p)) return null;
+  let doc;
+  try {
+    doc = JSON.parse(readFileSync13(p, "utf8"));
+  } catch {
+    return null;
+  }
+  if (doc === null || typeof doc !== "object" || Array.isArray(doc)) return null;
+  const b = doc;
+  if (typeof b.source_commit !== "string" || b.source_commit === "") return null;
+  return {
+    source_commit: b.source_commit,
+    source_dirty: typeof b.source_dirty === "boolean" ? b.source_dirty : null,
+    standard: typeof b.standard === "string" ? b.standard : null
+  };
+}
 function writeManifest(h, payloadList) {
   const srcManifest = join19(h.srcRoot, ".claude/DEPLOYED");
   let remote = "";
@@ -5971,17 +6019,19 @@ function writeManifest(h, payloadList) {
   if (remote === "") remote = "unknown \u2014 the deploying checkout had no origin remote";
   if (commit === "") commit = "unknown";
   const files = {};
-  for (const rel of [...payloadList].sort(cmpString)) {
-    if (rel === "") continue;
-    const p = join19(h.target, rel);
+  for (const rel2 of [...payloadList].sort(cmpString)) {
+    if (rel2 === "") continue;
+    const p = join19(h.target, rel2);
     if (!isFile(p)) continue;
-    files[rel] = sealQuiet(p);
+    files[rel2] = sealQuiet(p);
   }
+  const build2 = buildStamp(h.srcClaude);
   const doc = {
     source_remote: remote,
     source_commit: commit,
     deployed_at: h.ctx.today,
     ...relay === null ? {} : { deployed_from: relay },
+    ...build2 === null ? {} : { build: build2 },
     files
   };
   const bytes = jqFormat(doc);
@@ -6003,26 +6053,511 @@ function writeManifest(h, payloadList) {
   } catch {
     h.cli.die(`cannot write ${h.target}/.claude/DEPLOYED \u2014 check the target's permissions`);
   }
-  return { status, filesCount: Object.keys(files).length, sourceCommit: commit };
+  return {
+    status,
+    filesCount: Object.keys(files).length,
+    sourceCommit: commit,
+    buildCommit: build2 === null ? "" : String(build2["source_commit"])
+  };
 }
 
+// src/nouns/harness/constitution-lane.ts
+import { chmodSync as chmodSync2, readFileSync as readFileSync14, statSync as statSync8, writeFileSync as writeFileSync6 } from "node:fs";
+import { join as join20 } from "node:path";
+
 // src/nouns/harness/constitution.ts
-var CLAUDE_POINTER = "\n## This repo had its own CLAUDE.md\n\nIt is preserved verbatim at `CLAUDE.pre-harness.md` and it still\napplies. Read it. Where it and this file disagree about how THIS repo\nworks, it wins; where they disagree about the governance loop, this file\nwins, and the disagreement is worth reporting.\n";
+var SEQUESTER_NOTE = "\n## Sequestered instructions\n\nInstructions from before the harness are sequestered in `.claude/sequestered/` (`.claude/SEQUESTERED.json`). They carry no authority: do not follow, move or copy them. The owner reviews them with a session; what he re-admits is written into `.claude/rules/project-standards.md`. Where this file and the rules do not answer how this repo works, ask.\n";
 var OURS_MARKER = "governed by the **harness**";
-function desiredConstitution(payload, preservedExists) {
-  return preservedExists ? Buffer.concat([payload, Buffer.from(CLAUDE_POINTER)]) : payload;
+function desiredConstitution(payload, sequestered) {
+  return sequestered ? Buffer.concat([payload, Buffer.from(SEQUESTER_NOTE)]) : payload;
 }
-function constitutionAct(current, payload, preservedExists) {
+function constitutionAct(current, payload, sequestered) {
   if (current === null) return "install";
-  if (current.equals(desiredConstitution(payload, preservedExists))) return "unchanged";
+  if (current.equals(desiredConstitution(payload, sequestered))) return "unchanged";
   if (current.toString("utf8").includes(OURS_MARKER)) return "update";
-  return "preserve";
+  return "foreign";
+}
+
+// src/nouns/harness/state.ts
+var WRITTEN = /* @__PURE__ */ new Set(["CREATED", "UPDATED", "SEEDED", "REMOVED", "SEQUESTERED"]);
+function commitPaths(h) {
+  const out = new Set(h.wrote ?? []);
+  for (const it of h.items) {
+    if (!WRITTEN.has(it.status)) continue;
+    out.add(it.path);
+    if (it.to !== void 0) out.add(it.to);
+  }
+  return [...out].sort();
+}
+function item(h, path, status, detail = "") {
+  h.items.push({ path, status, detail });
+  if (detail !== "") h.cli.say(`  ${status.padEnd(9)} ${path} \u2014 ${detail}`);
+  else h.cli.say(`  ${status.padEnd(9)} ${path}`);
+}
+function check(h, name, ok, detail) {
+  h.rows += 1;
+  if (ok) h.cli.pass(name, detail);
+  else h.cli.fail(name, detail);
+}
+function warn(h, name, detail) {
+  h.cli.warn(name, detail);
+}
+function harnessEmit(h, summary, extra2) {
+  h.cli.extra({ target: h.target, items: h.items });
+  if (extra2 !== void 0) h.cli.extra(extra2);
+  h.cli.say("");
+  return h.cli.emit(summary);
+}
+
+// src/nouns/harness/constitution-lane.ts
+function noteDue(seq) {
+  return seq.record !== null && seq.record.review.status === "pending";
+}
+function applyConstitution(h, seq) {
+  const { cli, target } = h;
+  const srcMd = join20(h.srcClaude, PAYLOAD_CLAUDE_MD);
+  if (!isFile(srcMd)) return null;
+  const tClaude = join20(target, "CLAUDE.md");
+  const payload = readFileSync14(srcMd);
+  const note = noteDue(seq);
+  const current = isFile(tClaude) ? readFileSync14(tClaude) : null;
+  const act = constitutionAct(current, payload, note);
+  if (act === "unchanged") {
+    item(h, "CLAUDE.md", "UNCHANGED");
+    return "UNCHANGED";
+  }
+  if (act === "foreign") {
+    cli.die(`CLAUDE.md in ${target} is this repo's own and is still in place, so the constitution was not installed over it \u2014 run scrumux harness sequester ${target}, then re-run`);
+  }
+  try {
+    writeFileSync6(tClaude, desiredConstitution(payload, note));
+    chmodSync2(tClaude, statSync8(srcMd).mode & 4095);
+  } catch {
+    cli.die(act === "install" ? `cannot install CLAUDE.md into ${target}` : `cannot update CLAUDE.md in ${target}`);
+  }
+  if (act === "update") {
+    item(h, "CLAUDE.md", "UPDATED");
+    return "UPDATED";
+  }
+  const moved = seq.entries.find((e) => e.from === "CLAUDE.md");
+  item(h, "CLAUDE.md", "CREATED", moved === void 0 ? "the constitution, at the repo root where every session reads it" : `the constitution, at the repo root; the repo's own CLAUDE.md is sequestered at ${moved.to}`);
+  return "CREATED";
+}
+
+// src/nouns/harness/sequester-lane.ts
+import { spawnSync as spawnSync4 } from "node:child_process";
+import {
+  chmodSync as chmodSync3,
+  mkdirSync as mkdirSync5,
+  readFileSync as readFileSync15,
+  renameSync as renameSync3,
+  statSync as statSync9,
+  writeFileSync as writeFileSync7
+} from "node:fs";
+import { dirname as dirname7, join as join21 } from "node:path";
+
+// src/nouns/harness/sequester-refs.ts
+function isHoldingSource(path) {
+  const base = path.slice(path.lastIndexOf("/") + 1);
+  if (/\.(py|ts|tsx|js|cjs|mjs|sh|bash|ya?ml|toml)$/.test(base)) return true;
+  if (base === "Makefile" || base.startsWith("Dockerfile") || base.startsWith("docker-compose")) return true;
+  if (!base.endsWith(".json")) return false;
+  return base === "package.json" || /^tsconfig.*\.json$/.test(base) || base.endsWith(".config.json") || path.startsWith(".github/") || path.startsWith(".vscode/");
+}
+var LITERAL = /(["'`])((?:\\.|(?!\1)[^\\])*?)\1/g;
+var VAR_ROOT = /^(\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|%[A-Za-z_][A-Za-z0-9_]*%)\//;
+var WORD_SPLIT = /[\s()[\]<>,;:=|&]+/;
+function unrooted(v) {
+  return v.replace(VAR_ROOT, "");
+}
+var segsOf = (s2) => s2.split(/[\\/]+/).filter((x) => x !== "");
+function findRefs(files, sources) {
+  const out = /* @__PURE__ */ new Map();
+  if (files.length === 0) return out;
+  const fileSet = new Set(files);
+  const prefixes = /* @__PURE__ */ new Set();
+  for (const f of files) {
+    const s2 = f.split("/");
+    for (let n = 1; n <= s2.length; n += 1) prefixes.add(s2.slice(0, n).join("/"));
+  }
+  const anchors = [...new Set(files.map((f) => f.split("/")[0]))];
+  const add = (target, r) => {
+    const list = out.get(target) ?? [];
+    if (!list.some((x) => x.source === r.source && x.line === r.line)) list.push(r);
+    out.set(target, list);
+  };
+  for (const src of sources) {
+    if (!isHoldingSource(src.path)) continue;
+    if (!anchors.some((a) => src.text.includes(a))) continue;
+    const lits = [];
+    src.text.split("\n").forEach((line, idx) => {
+      const ln = idx + 1;
+      for (const m of line.matchAll(LITERAL)) lits.push({ value: m[2], line: ln });
+      if (!anchors.some((a) => line.includes(a))) return;
+      const quoted = [...line.matchAll(LITERAL)].map((m) => m[2]);
+      const words2 = line.replace(LITERAL, " ").split(WORD_SPLIT);
+      for (const v of [...quoted, ...words2]) {
+        const p = unrooted(v);
+        if (fileSet.has(p)) add(p, { source: src.path, line: ln });
+      }
+    });
+    for (let i = 0; i < lits.length; i += 1) {
+      const first = unrooted(lits[i].value);
+      if (!prefixes.has(first)) continue;
+      let acc = segsOf(first);
+      for (let j = i; ; j += 1) {
+        const joined = acc.join("/");
+        if (j > i && fileSet.has(joined)) add(joined, { source: src.path, line: lits[i].line });
+        const next = lits[j + 1];
+        if (next === void 0 || next.line - lits[j].line > 2) break;
+        const grown = [...acc, ...segsOf(next.value)];
+        if (segsOf(next.value).join("/") !== next.value || !prefixes.has(grown.join("/"))) break;
+        acc = grown;
+      }
+    }
+  }
+  const rank2 = (r) => r.source.endsWith(".json") ? 1 : 0;
+  for (const list of out.values()) {
+    list.sort((a, b) => rank2(a) - rank2(b) || (a.source < b.source ? -1 : a.source > b.source ? 1 : a.line - b.line));
+  }
+  return out;
+}
+
+// src/nouns/harness/sequester.ts
+var SEQ_DIR = ".claude/sequestered";
+var SEQ_RECORD = ".claude/SEQUESTERED.json";
+var SEQ_SUFFIX = ".sequestered";
+var STANDARDS = ".claude/rules/project-standards.md";
+var ROOT_FILES = [
+  "CLAUDE.md",
+  "CLAUDE.pre-harness.md",
+  "AGENTS.md",
+  "GEMINI.md",
+  ".cursorrules",
+  ".windsurfrules",
+  ".github/copilot-instructions.md"
+];
+var DIR_GROUPS = [".agent-control/", ".cursor/", ".codex/"];
+var CLAUDE_GROUPS = [".claude/rules/", ".claude/skills/", ".claude/agents/", ".claude/commands/"];
+var CANDIDATE_DIRS = [...DIR_GROUPS, ...CLAUDE_GROUPS];
+var CANDIDATE_ROOT_FILES = ROOT_FILES;
+function kindOf2(path, standard) {
+  if (ROOT_FILES.includes(path)) return path;
+  if (isNested(path)) return null;
+  for (const g of DIR_GROUPS) if (path.startsWith(g)) return g;
+  for (const g of CLAUDE_GROUPS) {
+    if (!path.startsWith(g)) continue;
+    if (path === STANDARDS || standard.has(path)) return null;
+    return g;
+  }
+  return null;
+}
+function isNested(path) {
+  return path.includes("/") && /(^|\/)(CLAUDE|AGENTS)\.md$/.test(path);
+}
+function isLoadable(kind) {
+  return kind !== ".agent-control/";
+}
+function destOf(from) {
+  const segs = from.split("/").map((s2) => s2.startsWith(".") ? `dot-${s2.slice(1)}` : s2);
+  return `${SEQ_DIR}/${segs.join("/")}${SEQ_SUFFIX}`;
+}
+function freeDest(from, today, occupied) {
+  const want = destOf(from);
+  if (!occupied.has(want)) return want;
+  const base = want.slice(0, -SEQ_SUFFIX.length);
+  for (let n = 1; ; n += 1) {
+    const c = `${base}.${today}${n === 1 ? "" : `-${n}`}${SEQ_SUFFIX}`;
+    if (!occupied.has(c)) return c;
+  }
+}
+function keptBy(path, kept) {
+  return kept.find((k2) => k2.path === path || path.startsWith(k2.path.endsWith("/") ? k2.path : `${k2.path}/`));
+}
+function mergeKept(old, now) {
+  const out = /* @__PURE__ */ new Map();
+  for (const k2 of [...old, ...now]) out.set(k2.path, k2);
+  return [...out.values()].sort((a, b) => cmp3(a.path, b.path));
+}
+var cmp3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function planSequester(l) {
+  const tracked = new Set(l.tracked);
+  const kept = mergeKept(l.record?.kept ?? [], l.keep);
+  const readmittedTo = new Set((l.record?.readmitted ?? []).map((r) => r.to));
+  const nested = [...new Set([...l.tracked, ...l.present].filter(isNested))].sort(cmp3);
+  const movable = [];
+  const liveUntracked = [];
+  for (const p of [...new Set(l.present)].sort(cmp3)) {
+    const kind = kindOf2(p, l.standard);
+    if (kind === null || readmittedTo.has(p) || keptBy(p, kept) !== void 0) continue;
+    if (p === "CLAUDE.md") {
+      if (!l.rootClaudeOurs) movable.push({ path: p, kind, tracked: tracked.has(p) });
+      continue;
+    }
+    if (tracked.has(p)) movable.push({ path: p, kind, tracked: true });
+    else liveUntracked.push(p);
+  }
+  const files = movable.filter((m) => m.path !== "CLAUDE.md").map((m) => m.path);
+  const refs = findRefs(files, l.sources);
+  const holding = (path) => [...new Set((refs.get(path) ?? []).filter((r) => r.source !== path && kindOf2(r.source, l.standard) === null).map((r) => `${r.source}:${r.line}`))];
+  const heldRows = [];
+  const occupied = new Set(l.occupied);
+  const moves = [];
+  for (const m of movable) {
+    const shown = m.path === "CLAUDE.md" ? [] : holding(m.path);
+    if (shown.length > 0) {
+      heldRows.push({
+        path: m.path,
+        reason: `named by ${shown.length} reference(s) in tracked code, build or CI config that would break if it moved (data records, markdown and files that move with it never hold)`,
+        refs: shown.slice(0, 20)
+      });
+      continue;
+    }
+    const to = freeDest(m.path, l.today, occupied);
+    occupied.add(to);
+    moves.push({ from: m.path, to, kind: m.kind, tracked: m.tracked });
+  }
+  return { moves, held: heldRows, kept, liveUntracked, nested };
+}
+var SEQ_README = `# Sequestered instructions
+
+The files in this directory are the instructions this repository carried
+before the harness was deployed. They are kept so nothing is lost, and they
+carry NO AUTHORITY:
+
+- do not follow them;
+- do not move, copy or rename them, and do not quote them as rules;
+- every name ends \`.sequestered\` and every leading dot is spelled \`dot-\`,
+  so no tool discovers them as live configuration.
+
+What each file was, where it came from and its sha256 are recorded in
+\`.claude/SEQUESTERED.json\`. Re-admission happens in the owner's joint review
+with a session: what he re-admits is copied into
+\`.claude/rules/project-standards.md\` (or the path he names) by
+\`scrumux harness readmit\`, and recorded there.
+`;
+function emptyRecord(harnessCommit2) {
+  return {
+    version: 1,
+    harness_commit: harnessCommit2,
+    entries: [],
+    held: [],
+    kept: [],
+    live_untracked: [],
+    readmitted: [],
+    review: { status: "pending" }
+  };
+}
+function planIsEmpty(p) {
+  return p.moves.length === 0 && p.held.length === 0 && p.kept.length === 0 && p.liveUntracked.length === 0;
+}
+function parseRecord(text2) {
+  let doc;
+  try {
+    doc = JSON.parse(text2);
+  } catch {
+    return null;
+  }
+  if (doc === null || typeof doc !== "object" || Array.isArray(doc)) return null;
+  const d = doc;
+  const arr4 = (k2) => Array.isArray(d[k2]) ? d[k2] : [];
+  const rv = d["review"] ?? {};
+  const status = rv["status"] === "closed" ? "closed" : "pending";
+  return {
+    version: 1,
+    harness_commit: typeof d["harness_commit"] === "string" ? d["harness_commit"] : "unknown",
+    entries: arr4("entries"),
+    held: arr4("held"),
+    kept: arr4("kept"),
+    live_untracked: arr4("live_untracked"),
+    readmitted: arr4("readmitted"),
+    review: typeof rv["decision"] === "string" ? { status, decision: rv["decision"] } : { status }
+  };
+}
+function nextRecord(prev, plan, entries, harnessCommit2) {
+  const base = prev ?? emptyRecord(harnessCommit2);
+  return {
+    version: 1,
+    harness_commit: entries.length > 0 ? harnessCommit2 : base.harness_commit,
+    entries: [...base.entries, ...entries],
+    held: plan.held,
+    kept: plan.kept,
+    live_untracked: plan.liveUntracked,
+    readmitted: base.readmitted,
+    review: base.review
+  };
+}
+
+// src/nouns/harness/sequester-lane.ts
+var NOT_SOURCES = [".claude/dist/", ".claude/scripts/", ".claude/schemas/", `${SEQ_DIR}/`, "governance/", "node_modules/"];
+var NOT_SOURCE_FILES = /* @__PURE__ */ new Set([".claude/DEPLOYED", ".claude/CANON.json", SEQ_RECORD]);
+var SOURCE_MAX_BYTES = 2 * 1024 * 1024;
+function trackedFiles(target) {
+  const r = spawnSync4("git", ["-C", target, "ls-files", "-z"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+    maxBuffer: 256 * 1024 * 1024
+  });
+  if (r.status !== 0 || typeof r.stdout !== "string") return null;
+  return r.stdout.split("\0").filter((p) => p !== "");
+}
+function rel(target, abs) {
+  return abs.startsWith(`${target}/`) ? abs.slice(target.length + 1) : abs;
+}
+function jsonKeys(path, key) {
+  try {
+    const doc = JSON.parse(readFileSync15(path, "utf8"));
+    const v = doc[key];
+    return v !== null && typeof v === "object" && !Array.isArray(v) ? Object.keys(v) : [];
+  } catch {
+    return [];
+  }
+}
+function readRecord(target) {
+  try {
+    return parseRecord(readFileSync15(join21(target, SEQ_RECORD), "utf8"));
+  } catch {
+    return null;
+  }
+}
+function standardPaths(target, srcClaude, srcRoot) {
+  const relay = join21(srcRoot, ".claude/DEPLOYED");
+  return /* @__PURE__ */ new Set([
+    ...isFile(relay) ? jsonKeys(relay, "files") : allPayloadFiles(srcClaude, srcRoot),
+    ...jsonKeys(join21(target, ".claude/DEPLOYED"), "files"),
+    ...jsonKeys(join21(target, ".claude/CANON.json"), "files")
+  ]);
+}
+function presentCandidates(target) {
+  const out = CANDIDATE_ROOT_FILES.filter((f) => isFile(join21(target, f)));
+  for (const d of CANDIDATE_DIRS) {
+    if (!isDir(join21(target, d))) continue;
+    for (const abs of walkLikeFind(join21(target, d))) out.push(rel(target, abs));
+  }
+  return out.sort();
+}
+function sourcesOf(target, tracked) {
+  const out = [];
+  for (const p of tracked) {
+    if (!isHoldingSource(p)) continue;
+    if (NOT_SOURCE_FILES.has(p) || NOT_SOURCES.some((d) => p.startsWith(d))) continue;
+    const abs = join21(target, p);
+    try {
+      if (statSync9(abs).size > SOURCE_MAX_BYTES) continue;
+      out.push({ path: p, text: readFileSync15(abs, "utf8") });
+    } catch {
+    }
+  }
+  return out;
+}
+function gatherListing(h, keep) {
+  const t = h.target;
+  const tracked = trackedFiles(t) ?? [];
+  const standard = standardPaths(t, h.srcClaude, h.srcRoot);
+  let rootClaudeOurs = false;
+  try {
+    rootClaudeOurs = readFileSync15(join21(t, "CLAUDE.md"), "utf8").includes(OURS_MARKER);
+  } catch {
+    rootClaudeOurs = false;
+  }
+  const occupied = isDir(join21(t, SEQ_DIR)) ? walkLikeFind(join21(t, SEQ_DIR)).map((a) => rel(t, a)) : [];
+  return {
+    tracked,
+    present: presentCandidates(t),
+    rootClaudeOurs,
+    standard,
+    sources: sourcesOf(t, tracked),
+    occupied: new Set(occupied),
+    record: readRecord(t),
+    keep,
+    today: h.ctx.today
+  };
+}
+function harnessCommit(srcRoot) {
+  try {
+    const c = JSON.parse(readFileSync15(join21(srcRoot, ".claude/DEPLOYED"), "utf8")).source_commit;
+    if (typeof c === "string" && c !== "") return c;
+  } catch {
+  }
+  return gitOut(srcRoot, ["rev-parse", "HEAD"]) ?? "unknown";
+}
+function moveOne(h, from, to) {
+  const src = join21(h.target, from);
+  const dst = join21(h.target, to);
+  try {
+    mkdirSync5(dirname7(dst), { recursive: true });
+    renameSync3(src, dst);
+  } catch {
+    h.cli.die(`cannot sequester ${from} into ${to} \u2014 check the target's permissions; ${from} is untouched`);
+  }
+  try {
+    chmodSync3(dst, statSync9(dst).mode & 4022);
+  } catch {
+  }
+}
+function writeIfChanged(target, relPath, bytes) {
+  const abs = join21(target, relPath);
+  let prev = null;
+  try {
+    prev = readFileSync15(abs, "utf8");
+  } catch {
+    prev = null;
+  }
+  if (prev === bytes) return "UNCHANGED";
+  mkdirSync5(dirname7(abs), { recursive: true });
+  writeFileSync7(abs, bytes);
+  return prev === null ? "CREATED" : "UPDATED";
+}
+function runSequester(h, opts) {
+  const listing = gatherListing(h, opts.keep);
+  const plan = planSequester(listing);
+  const commit = harnessCommit(h.srcRoot);
+  const entries = [];
+  for (const m of plan.moves) {
+    if (opts.dryRun) {
+      item(h, m.from, "PLANNED", `would be sequestered at ${m.to}`);
+      entries.push({ from: m.from, to: m.to, sha256: sealQuiet(join21(h.target, m.from)), kind: m.kind, at: h.ctx.today });
+      continue;
+    }
+    moveOne(h, m.from, m.to);
+    entries.push({ from: m.from, to: m.to, sha256: sealQuiet(join21(h.target, m.to)), kind: m.kind, at: h.ctx.today });
+    h.items.push({ path: m.from, status: "SEQUESTERED", detail: `moved to ${m.to}`, to: m.to });
+    h.cli.say(`  ${"SEQUESTERED".padEnd(9)} ${m.from} \u2014 moved to ${m.to}`);
+  }
+  for (const x of plan.held) item(h, x.path, "HELD", `${x.reason}: ${x.refs.slice(0, 3).join(" ")}`);
+  for (const k2 of plan.kept) item(h, k2.path, "KEPT", `kept by the owner: ${k2.reason}`);
+  for (const p of plan.liveUntracked) item(h, p, "LIVE", "not tracked by git, so not moved \u2014 it is still live; commit it and re-run, or remove it");
+  if (listing.record === null && planIsEmpty(plan)) return { plan, entries, record: null };
+  const record = nextRecord(listing.record, plan, entries, commit);
+  const bytes = jqFormat(record);
+  if (opts.dryRun) {
+    let prev = "";
+    try {
+      prev = readFileSync15(join21(h.target, SEQ_RECORD), "utf8");
+    } catch {
+      prev = "";
+    }
+    if (prev !== bytes) item(h, SEQ_RECORD, "PLANNED", "would be written");
+    return { plan, entries, record };
+  }
+  const write = (relPath, text2) => {
+    let status;
+    try {
+      status = writeIfChanged(h.target, relPath, text2);
+    } catch {
+      h.cli.die(`cannot write ${relPath} in ${h.target} \u2014 check the target's permissions; what was moved stays moved, and re-running writes it`);
+    }
+    item(h, relPath, status);
+  };
+  if (record.entries.length > 0) write(`${SEQ_DIR}/README.md`, SEQ_README);
+  write(SEQ_RECORD, bytes);
+  return { plan, entries, record };
 }
 
 // src/nouns/harness/index-commit.ts
-import { spawnSync as spawnSync4 } from "node:child_process";
-import { readFileSync as readFileSync14 } from "node:fs";
-import { join as join20 } from "node:path";
+import { spawnSync as spawnSync5 } from "node:child_process";
+import { readFileSync as readFileSync16 } from "node:fs";
+import { join as join22 } from "node:path";
 var INDEX_REL = "governance/code-graph.json";
 var BUILD_STAMP_FIELDS = ["built_at", "built_at_epoch", "commit", "dirty"];
 function withoutBuildStamp(text2) {
@@ -6048,14 +6583,14 @@ function indexNeedsCommit(committed, current) {
   const b = withoutBuildStamp(current);
   return a === null || b === null || a !== b;
 }
-function committedText(target, rel) {
-  const r = spawnSync4("git", ["-C", target, "show", `HEAD:${rel}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 256 * 1024 * 1024 });
+function committedText(target, rel2) {
+  const r = spawnSync5("git", ["-C", target, "show", `HEAD:${rel2}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 256 * 1024 * 1024 });
   return r.status === 0 && typeof r.stdout === "string" ? r.stdout : null;
 }
 function reusableIndex(target) {
   let onDisk;
   try {
-    onDisk = readFileSync14(join20(target, INDEX_REL), "utf8");
+    onDisk = readFileSync16(join22(target, INDEX_REL), "utf8");
   } catch {
     return { reuse: false, reason: "no index on disk" };
   }
@@ -6065,7 +6600,7 @@ function reusableIndex(target) {
   let stale;
   let why;
   try {
-    [stale, why] = isStaleGraph(loadIndex(join20(target, INDEX_REL)), target);
+    [stale, why] = isStaleGraph(loadIndex(join22(target, INDEX_REL)), target);
   } catch (e) {
     return { reuse: false, reason: `the committed index is unreadable: ${e.message}` };
   }
@@ -6073,8 +6608,8 @@ function reusableIndex(target) {
 }
 
 // src/nouns/harness/permissions.ts
-import { chmodSync as chmodSync2, readFileSync as readFileSync15, renameSync as renameSync3, writeFileSync as writeFileSync6 } from "node:fs";
-import { join as join21 } from "node:path";
+import { chmodSync as chmodSync4, readFileSync as readFileSync17, renameSync as renameSync4, writeFileSync as writeFileSync8 } from "node:fs";
+import { join as join23 } from "node:path";
 var TOOL_SEEDS = [
   { manifest: "package.json", rules: ["Bash(npm *)", "Bash(npx *)"] },
   { manifest: "pyproject.toml", rules: ["Bash(uv *)"] },
@@ -6084,7 +6619,7 @@ function detectedToolSeeds(target) {
   const out = [];
   const seen = /* @__PURE__ */ new Set();
   for (const s2 of TOOL_SEEDS) {
-    if (!isFile(join21(target, s2.manifest))) continue;
+    if (!isFile(join23(target, s2.manifest))) continue;
     const rules = s2.rules.filter((r) => !seen.has(r));
     rules.forEach((r) => seen.add(r));
     if (rules.length > 0) out.push({ manifest: s2.manifest, rules });
@@ -6102,7 +6637,7 @@ var eq = (x, y) => jqFormat(x) === jqFormat(y);
 function unionAllow(cli, tset, rules) {
   let missing;
   try {
-    const targetAllow = allowOf(JSON.parse(readFileSync15(tset, "utf8")));
+    const targetAllow = allowOf(JSON.parse(readFileSync17(tset, "utf8")));
     missing = rules.filter((x, i) => !targetAllow.some((y) => eq(x, y)) && rules.findIndex((z) => eq(z, x)) === i);
   } catch {
     return 0;
@@ -6110,7 +6645,7 @@ function unionAllow(cli, tset, rules) {
   if (missing.length === 0) return 0;
   let doc;
   try {
-    doc = parsePreservingNumbers(readFileSync15(tset, "utf8"));
+    doc = parsePreservingNumbers(readFileSync17(tset, "utf8"));
   } catch {
     doc = null;
   }
@@ -6124,16 +6659,16 @@ function unionAllow(cli, tset, rules) {
   permsObj["allow"] = [...existing, ...missing];
   const tmp = `${tset}.tmp.${process.pid}`;
   try {
-    writeFileSync6(tmp, jqFormat(doc));
+    writeFileSync8(tmp, jqFormat(doc));
   } catch {
     cli.die("cannot stage settings.json merge");
   }
   try {
-    chmodSync2(tmp, 384);
+    chmodSync4(tmp, 384);
   } catch {
   }
   try {
-    renameSync3(tmp, tset);
+    renameSync4(tmp, tset);
   } catch {
     cli.die(`cannot write ${tset} \u2014 check the target's permissions`);
   }
@@ -6141,59 +6676,32 @@ function unionAllow(cli, tset, rules) {
 }
 function missingWriteTools(tset) {
   try {
-    const allow = allowOf(JSON.parse(readFileSync15(tset, "utf8"))).map((x) => String(x));
+    const allow = allowOf(JSON.parse(readFileSync17(tset, "utf8"))).map((x) => String(x));
     return ["Edit", "Write"].filter((t) => !allow.some((a) => a === t || a.startsWith(`${t}(`)));
   } catch {
     return null;
   }
 }
 
-// src/nouns/harness/state.ts
-var WRITTEN = /* @__PURE__ */ new Set(["CREATED", "UPDATED", "SEEDED", "REMOVED"]);
-function commitPaths(h) {
-  const out = new Set(h.wrote ?? []);
-  for (const it of h.items) if (WRITTEN.has(it.status)) out.add(it.path);
-  return [...out].sort();
-}
-function item(h, path, status, detail = "") {
-  h.items.push({ path, status, detail });
-  if (detail !== "") h.cli.say(`  ${status.padEnd(9)} ${path} \u2014 ${detail}`);
-  else h.cli.say(`  ${status.padEnd(9)} ${path}`);
-}
-function check(h, name, ok, detail) {
-  h.rows += 1;
-  if (ok) h.cli.pass(name, detail);
-  else h.cli.fail(name, detail);
-}
-function warn(h, name, detail) {
-  h.cli.warn(name, detail);
-}
-function harnessEmit(h, summary, extra2) {
-  h.cli.extra({ target: h.target, items: h.items });
-  if (extra2 !== void 0) h.cli.extra(extra2);
-  h.cli.say("");
-  return h.cli.emit(summary);
-}
-
 // src/nouns/harness/trust.ts
-import { readFileSync as readFileSync16, realpathSync } from "node:fs";
-import { dirname as dirname7, join as join22 } from "node:path";
-import { spawnSync as spawnSync5 } from "node:child_process";
+import { readFileSync as readFileSync18, realpathSync } from "node:fs";
+import { dirname as dirname8, join as join24 } from "node:path";
+import { spawnSync as spawnSync6 } from "node:child_process";
 function claudeConfigPath(env) {
   const o = env["SCRUMUX_CLAUDE_CONFIG"];
   if (o !== void 0 && o !== "") return o;
   const home = env["HOME"];
-  return home !== void 0 && home !== "" ? join22(home, ".claude.json") : null;
+  return home !== void 0 && home !== "" ? join24(home, ".claude.json") : null;
 }
 function trustRoot(target) {
   let root = target;
-  const r = spawnSync5(
+  const r = spawnSync6(
     "git",
     ["-C", target, "rev-parse", "--path-format=absolute", "--git-common-dir"],
     { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
   );
   const common = r.status === 0 && typeof r.stdout === "string" ? r.stdout.trim() : "";
-  if (common.endsWith("/.git")) root = dirname7(common);
+  if (common.endsWith("/.git")) root = dirname8(common);
   try {
     return realpathSync(root);
   } catch {
@@ -6207,7 +6715,7 @@ function trustOf(target, env) {
   let doc;
   try {
     if (cfg === null) throw new Error("no HOME");
-    doc = JSON.parse(readFileSync16(cfg, "utf8"));
+    doc = JSON.parse(readFileSync18(cfg, "utf8"));
   } catch {
     return { state: "unknown", root, detail: `trust not checked: no readable Claude Code config at ${cfg ?? "$HOME/.claude.json (HOME is not set)"} \u2014 unknown, not a failure. A dispatched session needs ${root} trusted or it silently ignores this repo's allow-list; if it is not, ${fix}` };
   }
@@ -6239,20 +6747,20 @@ function reportSessionPermissions(h, tset) {
 // src/nouns/harness/deploy.ts
 function cpP(src, dst) {
   copyFileSync2(src, dst);
-  const st = statSync8(src);
-  chmodSync3(dst, st.mode & 4095);
+  const st = statSync10(src);
+  chmodSync5(dst, st.mode & 4095);
   utimesSync2(dst, st.atime, st.mtime);
 }
 function bytesEqual(a, b) {
   try {
-    return readFileSync17(a).equals(readFileSync17(b));
+    return readFileSync19(a).equals(readFileSync19(b));
   } catch {
     return false;
   }
 }
 function parseJson(path) {
   try {
-    return JSON.parse(readFileSync17(path, "utf8"));
+    return JSON.parse(readFileSync19(path, "utf8"));
   } catch {
     return void 0;
   }
@@ -6336,87 +6844,51 @@ function harnessDeploy(h) {
   let updated = 0;
   let unchanged = 0;
   const payloadList = allPayloadFiles(h.srcClaude, h.srcRoot);
-  for (const rel of payloadList) {
-    if (rel === "") continue;
-    const src = srcPathOf(rel, h.srcClaude, h.srcRoot);
-    const dst = join23(target, rel);
+  for (const rel2 of payloadList) {
+    if (rel2 === "") continue;
+    const src = srcPathOf(rel2, h.srcClaude, h.srcRoot);
+    const dst = join25(target, rel2);
     if (!isFile(dst)) {
       try {
-        mkdirSync5(dirname8(dst), { recursive: true });
+        mkdirSync6(dirname9(dst), { recursive: true });
       } catch {
-        cli.die(`cannot create ${dirname8(dst)} \u2014 check the target's permissions`);
+        cli.die(`cannot create ${dirname9(dst)} \u2014 check the target's permissions`);
       }
       try {
         cpP(src, dst);
       } catch {
-        cli.die(`cannot install ${rel} into ${target} \u2014 check the target's permissions`);
+        cli.die(`cannot install ${rel2} into ${target} \u2014 check the target's permissions`);
       }
-      item(h, rel, "CREATED");
+      item(h, rel2, "CREATED");
       created += 1;
     } else if (bytesEqual(src, dst)) {
-      item(h, rel, "UNCHANGED");
+      item(h, rel2, "UNCHANGED");
       unchanged += 1;
     } else {
       try {
         cpP(src, dst);
       } catch {
-        cli.die(`cannot update ${rel} in ${target} \u2014 check the target's permissions`);
+        cli.die(`cannot update ${rel2} in ${target} \u2014 check the target's permissions`);
       }
-      item(h, rel, "UPDATED");
+      item(h, rel2, "UPDATED");
       updated += 1;
     }
   }
-  const tClaude = join23(target, "CLAUDE.md");
-  const srcClaudeMd = join23(h.srcClaude, PAYLOAD_CLAUDE_MD);
-  if (isFile(srcClaudeMd)) {
-    const payloadMd = readFileSync17(srcClaudeMd);
-    const preserved = join23(target, "CLAUDE.pre-harness.md");
-    const current = isFile(tClaude) ? readFileSync17(tClaude) : null;
-    const act = constitutionAct(current, payloadMd, isFile(preserved));
-    const install = (failure) => {
-      try {
-        writeFileSync7(tClaude, desiredConstitution(payloadMd, isFile(preserved)));
-        const st = statSync8(srcClaudeMd);
-        chmodSync3(tClaude, st.mode & 4095);
-      } catch {
-        cli.die(failure);
-      }
-    };
-    if (act === "install") {
-      install(`cannot install CLAUDE.md into ${target}`);
-      item(h, "CLAUDE.md", "CREATED", isFile(preserved) ? "the constitution, at the repo root, pointing at the preserved CLAUDE.pre-harness.md" : "the constitution, at the repo root where every session reads it");
-      created += 1;
-    } else if (act === "unchanged") {
-      item(h, "CLAUDE.md", "UNCHANGED");
-      unchanged += 1;
-    } else if (act === "update") {
-      install(`cannot update CLAUDE.md in ${target}`);
-      item(h, "CLAUDE.md", "UPDATED");
-      updated += 1;
-    } else {
-      if (!isFile(preserved)) {
-        try {
-          cpP(tClaude, preserved);
-        } catch {
-          cli.die("cannot preserve the existing CLAUDE.md");
-        }
-        (h.wrote ??= []).push("CLAUDE.pre-harness.md");
-      }
-      install(`cannot install CLAUDE.md into ${target}`);
-      item(h, "CLAUDE.md", "CREATED", "existing one preserved at CLAUDE.pre-harness.md and pointed at from the new one");
-      created += 1;
-    }
-  }
-  const tset = join23(target, ".claude/settings.json");
+  const seq = runSequester(h, { dryRun: false, keep: [] });
+  const cst = applyConstitution(h, seq);
+  if (cst === "CREATED") created += 1;
+  else if (cst === "UPDATED") updated += 1;
+  else if (cst === "UNCHANGED") unchanged += 1;
+  const tset = join25(target, ".claude/settings.json");
   let settingsTouched = false;
   if (!isFile(tset)) {
     try {
-      mkdirSync5(join23(target, ".claude"), { recursive: true });
+      mkdirSync6(join25(target, ".claude"), { recursive: true });
     } catch {
       cli.die(`cannot create ${target}/.claude \u2014 check the target's permissions`);
     }
     try {
-      cpP(join23(h.srcClaude, "settings.json"), tset);
+      cpP(join25(h.srcClaude, "settings.json"), tset);
     } catch {
       cli.die(`cannot install .claude/settings.json into ${target} \u2014 check the target's permissions`);
     }
@@ -6426,7 +6898,7 @@ function harnessDeploy(h) {
   } else {
     let srcAllow = [];
     try {
-      srcAllow = allowOf(JSON.parse(readFileSync17(join23(h.srcClaude, "settings.json"), "utf8")));
+      srcAllow = allowOf(JSON.parse(readFileSync19(join25(h.srcClaude, "settings.json"), "utf8")));
     } catch {
       srcAllow = [];
     }
@@ -6455,7 +6927,7 @@ function harnessDeploy(h) {
     }
   }
   for (const j of JOURNALS2) {
-    const jp = join23(target, "governance", j);
+    const jp = join25(target, "governance", j);
     if (isFile(jp)) {
       item(h, `governance/${j}`, "UNCHANGED");
       unchanged += 1;
@@ -6472,19 +6944,19 @@ function harnessDeploy(h) {
     created += 1;
   }
   const seededList = [];
-  const seeded = (rel) => {
-    seededList.push(rel);
+  const seeded = (rel2) => {
+    seededList.push(rel2);
   };
   seeded("governance/enforcement-posture.md");
   const pwallRel = ".claude/project-walls.conf";
   seeded(pwallRel);
-  const pwall = join23(target, pwallRel);
+  const pwall = join25(target, pwallRel);
   if (isFile(pwall)) {
     item(h, pwallRel, "UNCHANGED", "kept \u2014 a repo's own wall rules are never overwritten");
     unchanged += 1;
   } else {
     try {
-      writeFileSync7(pwall, PWALL_TEMPLATE);
+      writeFileSync9(pwall, PWALL_TEMPLATE);
     } catch {
     }
     item(h, pwallRel, "CREATED", "the one pathway for this repo's own wall rules");
@@ -6492,18 +6964,18 @@ function harnessDeploy(h) {
   }
   const pstdRel = ".claude/rules/project-standards.md";
   seeded(pstdRel);
-  const pstd = join23(target, pstdRel);
+  const pstd = join25(target, pstdRel);
   if (isFile(pstd)) {
     item(h, pstdRel, "UNCHANGED", "kept \u2014 a repo's own standards are never overwritten");
     unchanged += 1;
   } else {
     try {
-      mkdirSync5(join23(target, ".claude/rules"), { recursive: true });
+      mkdirSync6(join25(target, ".claude/rules"), { recursive: true });
     } catch {
       cli.die(`cannot create ${target}/.claude/rules \u2014 check the target's permissions`);
     }
     try {
-      writeFileSync7(pstd, PSTD_TEMPLATE);
+      writeFileSync9(pstd, PSTD_TEMPLATE);
     } catch {
     }
     item(h, pstdRel, "CREATED", "empty template for this repo's own standards; advisory only, never overwritten");
@@ -6511,8 +6983,8 @@ function harnessDeploy(h) {
   }
   const viewFiles = ["AI_LOG.MD", "DECISIONS.MD", "BACKLOG.MD", "governance/governance-graph.json", ".scrumux/events.jsonl", ".scratch/"];
   const viewFilesStr = viewFiles.join(" ");
-  const ign = join23(target, ".gitignore");
-  const ignLines = isFile(ign) ? readFileSync17(ign, "utf8").split("\n") : null;
+  const ign = join25(target, ".gitignore");
+  const ignLines = isFile(ign) ? readFileSync19(ign, "utf8").split("\n") : null;
   let ignAdd = "";
   const ignAddList = [];
   for (const vf of viewFiles) {
@@ -6528,7 +7000,7 @@ function harnessDeploy(h) {
     const ignExisted = ignLines !== null;
     try {
       if (ignExisted) {
-        const raw = readFileSync17(ign);
+        const raw = readFileSync19(ign);
         if (raw.length > 0 && raw[raw.length - 1] !== 10) appendFileSync(ign, "\n");
       }
       let block = "";
@@ -6549,7 +7021,7 @@ function harnessDeploy(h) {
       created += 1;
     }
   }
-  const cgPath = join23(target, "governance/code-graph.json");
+  const cgPath = join25(target, "governance/code-graph.json");
   const reuse = reusableIndex(target);
   const cg = reuse.reuse ? null : postInstall(ctx, ["graph", "code", "build", "--repo", target]);
   const cgout = cg === null ? "" : stripTrailingNewlines(cg.combined);
@@ -6559,7 +7031,7 @@ function harnessDeploy(h) {
   } else if (cg.rc === 0) {
     let cgNow = null;
     try {
-      cgNow = readFileSync17(cgPath, "utf8");
+      cgNow = readFileSync19(cgPath, "utf8");
     } catch {
       cgNow = null;
     }
@@ -6576,11 +7048,11 @@ function harnessDeploy(h) {
     check(h, "code-graph-built", false, `the code index was NOT built into ${target}: ${trNewlines(shHead(cgout, 2), " ")} \u2014 every scrumux graph code query there will say it has no index. Build it from any harness checkout that has the tree-sitter grammars: scrumux graph code build --repo ${target}${cg.note}`);
   }
   let pruned = 0;
-  const prevManifest = join23(target, ".claude/DEPLOYED");
+  const prevManifest = join25(target, ".claude/DEPLOYED");
   if (isFile(prevManifest)) {
     let was = [];
     try {
-      const doc = JSON.parse(readFileSync17(prevManifest, "utf8"));
+      const doc = JSON.parse(readFileSync19(prevManifest, "utf8"));
       const files = doc.files;
       if (files === null || files === void 0 || typeof files !== "object" || Array.isArray(files)) {
         throw new Error("no files map");
@@ -6596,9 +7068,9 @@ function harnessDeploy(h) {
         item(h, old, "KEPT", "repo-owned, not pruned \u2014 an older harness shipped it as payload and this manifest still claims it; dropped from the new manifest so no later deploy reconsiders it");
         continue;
       }
-      if (!isFile(join23(target, old))) continue;
+      if (!isFile(join25(target, old))) continue;
       try {
-        unlinkSync(join23(target, old));
+        unlinkSync(join25(target, old));
       } catch {
         continue;
       }
@@ -6647,22 +7119,25 @@ function harnessDeploy(h) {
   } else {
     check(h, "records-check", false, `exited ${gv.rc} against ${target} \u2014 the install is NOT good; run GOV_ROOT=${target} ${gv.rerun} records check and fix each named finding. First lines: ${grepHead3Semis(gvout, /^ *(FAIL|WARN) /)}${gv.note}`);
   }
+  const moved = seq.entries.length;
+  const seqWrote = h.items.some((i) => (i.status === "CREATED" || i.status === "UPDATED") && (i.path === SEQ_RECORD || i.path.startsWith(`${SEQ_DIR}/`)));
   let changed;
   let summary;
-  if (created === 0 && updated === 0) {
+  if (created === 0 && updated === 0 && moved === 0 && !seqWrote) {
     changed = false;
     summary = `harness deploy: nothing changed \u2014 all ${total} payload item(s) in ${target} already match this harness byte for byte, and .claude/DEPLOYED already describes them.`;
   } else {
     changed = true;
     summary = `harness deploy: ${created} created, ${updated} updated, ${unchanged} unchanged, ${pruned} removed (${total} payload item(s)) in ${target}, plus .claude/DEPLOYED.`;
+    if (moved > 0) summary += ` ${moved} earlier instruction file(s) sequestered in .claude/sequestered/ (.claude/SEQUESTERED.json): they carry no authority until the owner re-admits them.`;
   }
   if (cli.fails() !== 0) {
     summary += " The install FAILED its checks \u2014 see the check lines above; nothing was rolled back, fix and re-run.";
   }
-  if (changed && isDir(join23(target, ".git"))) {
+  if (changed && isDir(join25(target, ".git"))) {
     let dirty = 0;
     try {
-      const r = spawnSync6("git", ["-C", target, "status", "--porcelain"], {
+      const r = spawnSync7("git", ["-C", target, "status", "--porcelain"], {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"]
       });
@@ -6686,11 +7161,11 @@ function harnessDeploy(h) {
 }
 
 // src/nouns/harness/verify.ts
-import { readFileSync as readFileSync19, opendirSync as opendirSync2 } from "node:fs";
-import { join as join25 } from "node:path";
+import { readFileSync as readFileSync22, opendirSync as opendirSync2 } from "node:fs";
+import { join as join28 } from "node:path";
 
 // src/journal/timeout.ts
-import { spawnSync as spawnSync7 } from "node:child_process";
+import { spawnSync as spawnSync8 } from "node:child_process";
 var SIGNUM = {
   SIGHUP: 1,
   SIGINT: 2,
@@ -6752,7 +7227,7 @@ child.on('close', () => {
 `;
 function runWithTimeout(seconds, command, opts = {}) {
   const ms = seconds > 0 ? Math.round(seconds * 1e3) : 0;
-  const res = spawnSync7(process.execPath, ["-e", SUPERVISOR, String(ms), String(GRACE_MS), command], {
+  const res = spawnSync8(process.execPath, ["-e", SUPERVISOR, String(ms), String(GRACE_MS), command], {
     cwd: opts.cwd,
     env: opts.env,
     encoding: "utf8",
@@ -6914,8 +7389,8 @@ function ereMatches(pattern, subject) {
 }
 
 // src/schema/check.ts
-import { readFileSync as readFileSync18 } from "node:fs";
-import { basename as basename4, join as join24 } from "node:path";
+import { readFileSync as readFileSync20 } from "node:fs";
+import { basename as basename4, join as join26 } from "node:path";
 var TYPE_NAMES = /* @__PURE__ */ new Set([
   "object",
   "array",
@@ -6946,9 +7421,9 @@ var PAIRS = [
   ["repo-health.json", "repo-health.schema.json"]
 ];
 function schemaDir(root) {
-  const claude = join24(root, ".claude", "schemas");
+  const claude = join26(root, ".claude", "schemas");
   if (isDir(claude)) return claude;
-  const deploy = join24(root, ".deploy-claude", "schemas");
+  const deploy = join26(root, ".deploy-claude", "schemas");
   if (isDir(deploy)) return deploy;
   return claude;
 }
@@ -7037,7 +7512,7 @@ function isInstance(record, want) {
   }
 }
 function loadSchema(name, schemaRoot) {
-  const path = join24(schemaDir(schemaRoot), name);
+  const path = join26(schemaDir(schemaRoot), name);
   return pyLoads(readText(path));
 }
 function checkJournal(journalPath, schemaName, schemaRoot) {
@@ -7061,7 +7536,7 @@ function sweep(govDir, schemaRoot) {
   let found = 0;
   for (const [journal, schema] of PAIRS) {
     try {
-      for (const err of checkJournal(join24(govDir, journal), schema, schemaRoot)) {
+      for (const err of checkJournal(join26(govDir, journal), schema, schemaRoot)) {
         lines.push(err);
         found += 1;
       }
@@ -7145,7 +7620,7 @@ function errnoPath(e) {
   return typeof p === "string" ? p : "";
 }
 function readText(path) {
-  return readFileSync18(path, "utf8");
+  return readFileSync20(path, "utf8");
 }
 function dictOrEmpty(v) {
   return v instanceof Map ? v : /* @__PURE__ */ new Map();
@@ -7161,6 +7636,52 @@ function rsplit(s2, sep, maxsplit) {
   }
   parts.unshift(rest);
   return parts;
+}
+
+// src/nouns/harness/sequester-report.ts
+import { readFileSync as readFileSync21 } from "node:fs";
+import { join as join27 } from "node:path";
+var ADVISORY = "Advisory: it never moves the exit code.";
+function reportSequester(h) {
+  const { cli, target } = h;
+  const rec = readRecord(target);
+  if (rec === null) {
+    cli.note("sequestered-intact", `no ${SEQ_RECORD} \u2014 nothing has been sequestered here, so there is nothing to check`);
+  } else {
+    const missing = [];
+    const changed = [];
+    for (const e of rec.entries) {
+      if (!isFile(join27(target, e.to))) missing.push(e.to);
+      else if (sealQuiet(join27(target, e.to)) !== e.sha256) changed.push(e.to);
+    }
+    if (missing.length + changed.length > 0) {
+      warn(h, "sequestered-intact", `${missing.length === 0 ? "" : `MISSING: ${missing.join(" ")}. `}${changed.length === 0 ? "" : `CHANGED: ${changed.join(" ")}. `}These are the only copies of the instructions this repo had before the harness, and ${SEQ_RECORD} records their sha256; restore them from git (git -C ${target} checkout -- <path>). ${ADVISORY}`);
+    } else {
+      cli.note("sequestered-intact", `all ${rec.entries.length} sequestered file(s) present with the sha256 ${SEQ_RECORD} records`);
+    }
+  }
+  const standard = standardPaths(target, h.srcClaude, h.srcRoot);
+  const kept = rec?.kept ?? [];
+  const readmittedTo = new Set((rec?.readmitted ?? []).map((r) => r.to));
+  const heldSet = new Set((rec?.held ?? []).map((x) => x.path));
+  let rootOurs = false;
+  try {
+    rootOurs = readFileSync21(join27(target, "CLAUDE.md"), "utf8").includes(OURS_MARKER);
+  } catch {
+    rootOurs = false;
+  }
+  const live = presentCandidates(target).filter((p) => {
+    const kind = kindOf2(p, standard);
+    if (kind === null || !isLoadable(kind)) return false;
+    if (p === "CLAUDE.md" && rootOurs) return false;
+    return keptBy(p, kept) === void 0 && !readmittedTo.has(p);
+  });
+  if (live.length > 0) {
+    const shown = live.slice(0, 10).map((p) => heldSet.has(p) ? `${p} (held: tracked code names it)` : p).join(" ");
+    warn(h, "instructions-live", `${live.length} instruction file(s) outside the harness standard are where a tool loads them: ${shown}${live.length > 10 ? " \u2026" : ""} \u2014 a session may follow them as rules. Sequester them: scrumux harness sequester ${target} (a file tracked code names is held in place, listed with its references), or keep one on purpose: --keep PATH --reason R. ${ADVISORY}`);
+  } else {
+    cli.note("instructions-live", "no instruction file outside the harness standard is loadable at the root or under .claude");
+  }
 }
 
 // src/nouns/harness/verify.ts
@@ -7228,7 +7749,7 @@ function findByName(root, name) {
       return;
     }
     for (const e of entries) {
-      const p = join25(dir, e.name);
+      const p = join28(dir, e.name);
       if (e.name === name && p.includes("/.claude/")) out.push(p);
       if (e.isDirectory()) walk(p);
     }
@@ -7237,7 +7758,7 @@ function findByName(root, name) {
   return out;
 }
 function schemaSweepCheck(target, scriptsDir) {
-  const r = sweep(join25(target, "governance"), target);
+  const r = sweep(join28(target, "governance"), target);
   if (r.rc === 0) {
     return { ok: true, detail: `schema sweep clean against ${target}/governance` };
   }
@@ -7247,9 +7768,35 @@ function schemaSweepCheck(target, scriptsDir) {
     detail: `the schema sweep exited ${r.rc} against ${target}/governance: ${trNewlines(shHead(scout, 3), ";")} \u2014 fix the record, or the schema if the contract genuinely changed; run GOV_ROOT=${target} ${scriptsDir}/scrumux records check for the full list`
   };
 }
+function buildProvenance(manDoc, buildDoc, target) {
+  const obj6 = (v) => v !== void 0 && v !== null && typeof v === "object" && !Array.isArray(v) ? v : null;
+  const known = (v) => typeof v === "string" && v !== "" && v !== "unknown" ? v : "";
+  const short = (c) => c.slice(0, 8);
+  const redeploy = `rebuild in the harness checkout (npm run build) and re-run harness deploy ${target}`;
+  const b = obj6(buildDoc);
+  if (b === null) {
+    return { tier: "note", detail: `unknown \u2014 ${target}/.claude/dist/BUILD.json is absent or does not parse, so which commit built the bundles cannot be said (scripts-roster and machinery-drift report the file itself)` };
+  }
+  const built = known(b["source_commit"]);
+  if (built === "") {
+    return { tier: "note", detail: `unknown \u2014 the bundles were built before builds recorded their commit, so whether they match the harness the manifest names is not known either way; ${redeploy} to start recording it` };
+  }
+  const m = obj6(manDoc);
+  const named = m === null ? "" : known(m["source_commit"]);
+  if (named === "") {
+    return { tier: "note", detail: `the bundles were built from ${short(built)}; the manifest names no harness commit to compare it with, so a match is not claimed either way` };
+  }
+  if (named !== built) {
+    return { tier: "warn", detail: `the bundles under .claude/dist were built from ${short(built)}, but .claude/DEPLOYED names the harness at ${short(named)} \u2014 the walls and CLI running here are not the version the manifest claims (a build older or newer than the checkout it was deployed from). Fix: ${redeploy}. Advisory: never moves the exit code.` };
+  }
+  if (b["source_dirty"] === true) {
+    return { tier: "warn", detail: `the bundles were built from ${short(built)} with uncommitted changes to their inputs, so no commit describes them exactly. Fix: commit, then ${redeploy}. Advisory: never moves the exit code.` };
+  }
+  return { tier: "note", detail: `the bundles were built from ${short(built)}, the commit .claude/DEPLOYED names` };
+}
 function parseJson2(path) {
   try {
-    return JSON.parse(readFileSync19(path, "utf8"));
+    return JSON.parse(readFileSync22(path, "utf8"));
   } catch {
     return void 0;
   }
@@ -7257,7 +7804,7 @@ function parseJson2(path) {
 function harnessVerify(h) {
   const { cli, ctx, target } = h;
   cli.say(`=== HARNESS VERIFY -> ${target} (${ctx.today}) ===`);
-  const tset = join25(target, ".claude/settings.json");
+  const tset = join28(target, ".claude/settings.json");
   if (isFile(tset)) {
     check(h, "settings-at-root", true, `settings.json is at the repo root (${tset}), which is where Claude Code resolves it at launch`);
   } else {
@@ -7312,10 +7859,10 @@ function harnessVerify(h) {
   const roster = allPayloadFiles(h.srcClaude, h.srcRoot);
   let missingS = "";
   let nMissing = 0;
-  for (const rel of roster) {
-    if (rel === "") continue;
-    if (!isFile(join25(target, rel))) {
-      missingS += ` ${rel}`;
+  for (const rel2 of roster) {
+    if (rel2 === "") continue;
+    if (!isFile(join28(target, rel2))) {
+      missingS += ` ${rel2}`;
       nMissing += 1;
     }
   }
@@ -7327,7 +7874,7 @@ function harnessVerify(h) {
   }
   let missingJ = "";
   for (const j of JOURNALS2) {
-    if (!isFile(join25(target, "governance", j))) missingJ += ` ${j}`;
+    if (!isFile(join28(target, "governance", j))) missingJ += ` ${j}`;
   }
   if (missingJ !== "") {
     check(h, "journals", false, `journal(s) absent from ${target}/governance:${missingJ} \u2014 re-run harness deploy ${target}`);
@@ -7364,7 +7911,7 @@ function harnessVerify(h) {
   } else {
     check(h, "surfaces-run", true, `all ${probeN} registered surface(s) executed in ${target} and answered:${probeNames}. Declared exemptions: ${exemptText}`);
   }
-  const man = join25(target, ".claude/DEPLOYED");
+  const man = join28(target, ".claude/DEPLOYED");
   const manDoc = isFile(man) ? parseJson2(man) : void 0;
   const filesVal = manDoc !== void 0 && manDoc !== null && typeof manDoc === "object" && !Array.isArray(manDoc) ? manDoc["files"] : void 0;
   if (!isFile(man)) {
@@ -7381,28 +7928,28 @@ function harnessVerify(h) {
       if (dp === "") continue;
       dcount += 1;
       const dh = String(files[dp]);
-      if (!isFile(join25(target, dp))) {
+      if (!isFile(join28(target, dp))) {
         driftGone += ` ${dp}`;
         continue;
       }
-      if (sealQuiet(join25(target, dp)) === dh) continue;
+      if (sealQuiet(join28(target, dp)) === dh) continue;
       if (driftClass(dp) === "tracked") driftTracked += ` ${dp}`;
       else driftFrozen += ` ${dp}`;
     }
     let orphans2 = "";
     for (const od of [".claude/scripts", ".claude/schemas", ".claude/dist"]) {
-      if (!isDir(join25(target, od))) continue;
-      for (const abs of walkLikeFind(join25(target, od))) {
+      if (!isDir(join28(target, od))) continue;
+      for (const abs of walkLikeFind(join28(target, od))) {
         const name = abs.slice(abs.lastIndexOf("/") + 1);
         if (name.endsWith(".pyc") || name === ".DS_Store") continue;
         if (abs.includes("__pycache__")) continue;
-        const rel = abs.startsWith(`${target}/`) ? abs.slice(target.length + 1) : abs;
-        if (Object.prototype.hasOwnProperty.call(files, rel)) continue;
-        if (driftClass(rel) === "tracked") {
-          driftTracked += ` ${rel} (not in the manifest)`;
+        const rel2 = abs.startsWith(`${target}/`) ? abs.slice(target.length + 1) : abs;
+        if (Object.prototype.hasOwnProperty.call(files, rel2)) continue;
+        if (driftClass(rel2) === "tracked") {
+          driftTracked += ` ${rel2} (not in the manifest)`;
           continue;
         }
-        orphans2 += ` ${rel}`;
+        orphans2 += ` ${rel2}`;
       }
     }
     if (orphans2 !== "") {
@@ -7420,38 +7967,428 @@ function harnessVerify(h) {
       check(h, "machinery-drift", true, `all ${dcount} installed file(s) match .claude/DEPLOYED byte for byte`);
     }
   }
-  reportSessionPermissions(h, join25(target, ".claude/settings.json"));
+  {
+    const dist = join28(target, ".claude/dist/BUILD.json");
+    const bp = buildProvenance(manDoc, isFile(dist) ? parseJson2(dist) : void 0, target);
+    if (bp.tier === "warn") warn(h, "build-provenance", bp.detail);
+    else cli.note("build-provenance", bp.detail);
+  }
+  reportSessionPermissions(h, join28(target, ".claude/settings.json"));
+  reportSequester(h);
   const nfail = cli.fails();
   const nall = h.rows;
   const summary = nfail === 0 ? `harness verify: ${target} is INSTALLED \u2014 ${nall}/${nall} checks pass. Installed is not live: whether these hooks fire is decided by the project root a session was LAUNCHED with, which nothing inside it can change.` : `harness verify: ${target} is NOT fully installed \u2014 ${nfail} of ${nall} checks failed. Each FAIL line above names the fix.`;
   return harnessEmit(h, summary);
 }
 
+// src/nouns/harness/digest.ts
+import { readFileSync as readFileSync23 } from "node:fs";
+import { join as join29 } from "node:path";
+
+// src/nouns/harness/stale-markers.ts
+var C = "CLAUDE.md";
+var POSTURE = ".claude/rules/enforcement-posture.md";
+var UPSTREAM = ".claude/rules/harness-is-upstream.md";
+var LLM = ".claude/rules/no-direct-llm-calls.md";
+var REVIEW = ".claude/skills/session-review/SKILL.md";
+var OPEN = ".claude/skills/session-open/SKILL.md";
+var STALE_MARKERS = [
+  { marker: ":8765", superseded_by: C, names: "a retired local service port" },
+  { marker: "session accept", superseded_by: REVIEW, names: "a retired acceptance verb" },
+  { marker: "validate precommit", superseded_by: REVIEW, names: "a retired pre-commit gate" },
+  { marker: "log-completion", superseded_by: REVIEW, names: "a retired logging script" },
+  { marker: "operator consume", superseded_by: OPEN, names: "a retired operator hand-off verb" },
+  { marker: "gateway sync", superseded_by: LLM, names: "a retired gateway-sync step" },
+  { marker: "~/tools/", superseded_by: UPSTREAM, names: "a laptop tools path" },
+  { marker: "C:\\", superseded_by: C, names: "a Windows laptop path" },
+  { marker: "/Users/", superseded_by: C, names: "a macOS laptop path" },
+  { marker: "Strict mode", superseded_by: POSTURE, names: "a retired enforcement mode" },
+  { marker: "feature deployments are blocked", superseded_by: POSTURE, names: "a retired deployment block" },
+  { marker: "chat approval", superseded_by: C, names: "approval given in chat, which the app now records" },
+  { marker: "do not run scrumux", superseded_by: C, names: "an instruction not to use the harness" },
+  { marker: "foundry monorepo", superseded_by: UPSTREAM, names: "the retired foundry monorepo" },
+  { marker: "/foundry/", superseded_by: UPSTREAM, names: "a path into the retired foundry monorepo" },
+  { marker: "harness-change", superseded_by: UPSTREAM, names: "a retired harness-change procedure" },
+  { marker: "push freely", superseded_by: POSTURE, names: "a push directive" },
+  { marker: "never push", superseded_by: POSTURE, names: "a push directive" },
+  { marker: "push after", superseded_by: POSTURE, names: "a push directive" },
+  { marker: "use opus", superseded_by: LLM, names: "a model directive" },
+  { marker: "use sonnet", superseded_by: LLM, names: "a model directive" },
+  { marker: "model:", superseded_by: LLM, names: "a model directive" }
+];
+function markersIn(text2) {
+  const low = text2.toLowerCase();
+  return STALE_MARKERS.filter((m) => low.includes(m.marker.toLowerCase()));
+}
+
+// src/nouns/harness/digest-units.ts
+function splitUnits(text2) {
+  const out = [];
+  let cur = [];
+  let start = 0;
+  let fence = false;
+  const flush = () => {
+    const t = cur.join("\n").trim();
+    if (t !== "") out.push({ line: start, text: t });
+    cur = [];
+  };
+  text2.split("\n").forEach((raw, i) => {
+    const line = raw.replace(/\s+$/, "");
+    if (/^(```|~~~)/.test(line.trimStart())) {
+      if (!fence) {
+        flush();
+        start = i + 1;
+      }
+      fence = !fence;
+      cur.push(line);
+      if (!fence) flush();
+      return;
+    }
+    if (fence) {
+      cur.push(line);
+      return;
+    }
+    if (line === "") {
+      flush();
+      return;
+    }
+    if (/^#{1,6}\s/.test(line)) flush();
+    if (cur.length === 0) start = i + 1;
+    cur.push(line);
+  });
+  flush();
+  return out;
+}
+var DUPLICATE_MIN = 20;
+function flagUnits(units, payloadUnits) {
+  const out = [];
+  for (const u of units) {
+    const ms = markersIn(u.text);
+    const dup = u.text.length >= DUPLICATE_MIN ? payloadUnits.get(u.text) : void 0;
+    if (ms.length === 0 && dup === void 0) continue;
+    const first = u.text.split("\n", 1)[0];
+    out.push({
+      line: u.line,
+      excerpt: first.length > 120 ? `${first.slice(0, 117)}...` : first,
+      markers: ms.map((m) => ({ marker: m.marker, superseded_by: m.superseded_by, names: m.names })),
+      ...dup === void 0 ? {} : { duplicate_of: dup }
+    });
+  }
+  return out;
+}
+function payloadUnitIndex(files) {
+  const out = /* @__PURE__ */ new Map();
+  for (const f of files) for (const u of splitUnits(f.text)) if (!out.has(u.text)) out.set(u.text, f.path);
+  return out;
+}
+var asObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v) ? v : {};
+var asArr = (v) => Array.isArray(v) ? v : [];
+function hookLines(settings) {
+  const out = [];
+  for (const [event, groups] of Object.entries(asObj(asObj(settings)["hooks"]))) {
+    for (const g of asArr(groups)) {
+      const matcher = typeof asObj(g)["matcher"] === "string" ? asObj(g)["matcher"] : "";
+      for (const hk of asArr(asObj(g)["hooks"])) {
+        const o = asObj(hk);
+        const cmd = [o["command"], ...asArr(o["args"])].filter((x) => typeof x === "string").join(" ");
+        out.push(`${event}[${matcher}]: ${cmd}`);
+      }
+    }
+  }
+  return out;
+}
+function settingsVariance(target, payload) {
+  const allowOf2 = (s2) => asArr(asObj(asObj(s2)["permissions"])["allow"]).filter((x) => typeof x === "string");
+  const pAllow = new Set(allowOf2(payload));
+  const pHooks = new Set(hookLines(payload));
+  const tEnv = asObj(asObj(target)["env"]);
+  return {
+    extra_allow: allowOf2(target).filter((a) => !pAllow.has(a)),
+    extra_hooks: hookLines(target).filter((x) => !pHooks.has(x)),
+    missing_env: Object.keys(asObj(asObj(payload)["env"])).filter((k2) => !(k2 in tEnv))
+  };
+}
+function isProse(path) {
+  return /\.(md|mdc|markdown|txt)$/i.test(path) || /(^|\/)\.(cursorrules|windsurfrules)$/.test(path);
+}
+
+// src/nouns/harness/digest.ts
+function readText2(p) {
+  try {
+    return readFileSync23(p, "utf8");
+  } catch {
+    return null;
+  }
+}
+function readJson(p) {
+  const t = readText2(p);
+  if (t === null) return void 0;
+  try {
+    return JSON.parse(t);
+  } catch {
+    return void 0;
+  }
+}
+function payloadProse(h) {
+  const out = [];
+  const c = readText2(join29(h.srcClaude, PAYLOAD_CLAUDE_MD));
+  if (c !== null) out.push({ path: "CLAUDE.md", text: c });
+  for (const rel2 of allPayloadFiles(h.srcClaude, h.srcRoot)) {
+    if (!rel2.endsWith(".md")) continue;
+    const t = readText2(srcPathOf(rel2, h.srcClaude, h.srcRoot));
+    if (t !== null) out.push({ path: rel2, text: t });
+  }
+  return out;
+}
+function harnessDigest(h) {
+  const { cli, target } = h;
+  cli.say(`=== HARNESS DIGEST -> ${target} (${h.ctx.today}) \u2014 read-only ===`);
+  const listing = gatherListing(h, []);
+  const plan = planSequester(listing);
+  const record = listing.record;
+  const index = payloadUnitIndex(payloadProse(h));
+  const wanted = [
+    ...(record?.entries ?? []).map((e) => ({ from: e.from, at: e.to, state: "sequestered" })),
+    ...plan.held.map((x) => ({ from: x.path, at: x.path, state: "held" })),
+    ...plan.moves.map((m) => ({ from: m.from, at: m.from, state: "pending" }))
+  ];
+  const files = [];
+  for (const w of wanted) {
+    if (!isProse(w.from)) continue;
+    const text2 = readText2(join29(target, w.at));
+    if (text2 === null) {
+      cli.say(`  ${w.from} \u2014 ${w.at} cannot be read; harness verify's sequestered-intact row says why`);
+      continue;
+    }
+    const units2 = splitUnits(text2);
+    const flagged2 = flagUnits(units2, index);
+    files.push({ ...w, units: units2.length, flagged: flagged2 });
+    cli.say(`  ${w.from} (${w.state}${w.at === w.from ? "" : ` at ${w.at}`}): ${units2.length} unit(s), ${flagged2.length} flagged`);
+    for (const f of flagged2) {
+      const why = [
+        ...f.markers.map((m) => `names ${m.marker} (${m.names}) \u2014 now: ${m.superseded_by}`),
+        ...f.duplicate_of === void 0 ? [] : [`repeats ${f.duplicate_of} exactly`]
+      ].join("; ");
+      cli.say(`      ${w.at}:${f.line}  ${f.excerpt} \u2014 ${why}`);
+    }
+  }
+  for (const x of plan.held) cli.say(`  HELD   ${x.path} \u2014 ${x.reason}: ${x.refs.join(" ")}`);
+  for (const n of plan.nested) cli.say(`  NESTED ${n} \u2014 below the root, never moved; a session reading that directory loads it`);
+  for (const p of plan.liveUntracked) cli.say(`  LIVE   ${p} \u2014 untracked, not moved`);
+  const tset = readJson(join29(target, ".claude/settings.json"));
+  const pset = readJson(join29(h.srcClaude, "settings.json"));
+  const variance = tset === void 0 || pset === void 0 ? null : settingsVariance(tset, pset);
+  if (variance === null) {
+    cli.say("  settings: not compared \u2014 the target or the payload has no settings.json that parses");
+  } else {
+    cli.say(`  settings: extra allow [${variance.extra_allow.join(", ")}]; extra hooks [${variance.extra_hooks.join(", ")}]; missing env [${variance.missing_env.join(", ")}]`);
+  }
+  const units = files.reduce((n, f) => n + f.units, 0);
+  const flagged = files.reduce((n, f) => n + f.flagged.length, 0);
+  cli.data({
+    files,
+    held: plan.held,
+    nested: plan.nested,
+    live_untracked: plan.liveUntracked,
+    settings: variance,
+    review: record?.review ?? null
+  });
+  return harnessEmit(h, `harness digest: ${files.length} file(s), ${units} unit(s), ${flagged} flagged (a stale marker or payload text repeated); ${plan.held.length} held, ${plan.nested.length} nested, ${plan.liveUntracked.length} live untracked. Read-only \u2014 nothing was written.`);
+}
+
+// src/nouns/harness/sequester-verbs.ts
+import { appendFileSync as appendFileSync2, mkdirSync as mkdirSync7, readFileSync as readFileSync24, writeFileSync as writeFileSync10 } from "node:fs";
+import { dirname as dirname10, isAbsolute as isAbsolute2, join as join30, normalize } from "node:path";
+function harnessSequester(h, opts) {
+  const { cli, target } = h;
+  cli.say(`=== HARNESS SEQUESTER -> ${target} (${h.ctx.today})${opts.dryRun ? " \u2014 dry run, nothing is written" : ""} ===`);
+  const prior = readRecord(target);
+  for (const k2 of opts.keep) {
+    if (k2.path === "CLAUDE.md") {
+      cli.dieUsage("the root CLAUDE.md cannot be kept: the constitution stands at that path. Let it be sequestered, then re-admit what still holds: scrumux harness readmit <target> CLAUDE.md --reason R");
+    }
+    const e = prior?.entries.find((x) => x.from === k2.path);
+    if (e !== void 0) {
+      cli.dieUsage(`${k2.path} is already sequestered at ${e.to} \u2014 to put it back in force, re-admit it: scrumux harness readmit ${target} ${k2.path} --to ${k2.path} --reason R`);
+    }
+  }
+  const seq = runSequester(h, opts);
+  const deployed = isFile(join30(target, ".claude/DEPLOYED"));
+  const rootMoved = seq.entries.some((e) => e.from === "CLAUDE.md");
+  if (!opts.dryRun && (deployed || rootMoved)) applyConstitution(h, seq);
+  if (!deployed) cli.tell("not-deployed", `${target} has no .claude/DEPLOYED \u2014 sequestering is done; run scrumux harness deploy ${target} to install the rest of the harness`);
+  const p = seq.plan;
+  const counts2 = `${p.held.length} held, ${p.kept.length} kept, ${p.liveUntracked.length} live untracked, ${p.nested.length} nested left in place`;
+  const summary = opts.dryRun ? `harness sequester (dry run): ${p.moves.length} file(s) would move to ${SEQ_DIR}/; ${counts2}. Nothing was written.` : `harness sequester: ${p.moves.length} file(s) moved to ${SEQ_DIR}/; ${counts2}.${seq.record === null ? "" : ` Recorded in ${SEQ_RECORD}.`}`;
+  return harnessEmit(h, summary, {
+    dry_run: opts.dryRun,
+    plan: {
+      moves: seq.entries,
+      held: p.held,
+      kept: p.kept,
+      live_untracked: p.liveUntracked,
+      nested: p.nested
+    },
+    commit_paths: opts.dryRun ? [] : commitPaths(h)
+  });
+}
+var STANDARDS_HEAD = `---
+name: project-standards
+paths: ["**"]
+skills: []
+scripts: []
+---
+# Rule: this repo's own standards
+`;
+function writeRecord(h, rec) {
+  try {
+    item(h, SEQ_RECORD, writeIfChanged(h.target, SEQ_RECORD, jqFormat(rec)));
+  } catch {
+    h.cli.die(`cannot write ${SEQ_RECORD} in ${h.target} \u2014 check the target's permissions`);
+  }
+}
+function closeReview(h, rec, decision) {
+  let rows5 = [];
+  try {
+    const doc = JSON.parse(readFileSync24(join30(h.target, "governance/decisions.json"), "utf8"));
+    rows5 = Array.isArray(doc.entries) ? doc.entries : [];
+  } catch {
+    rows5 = [];
+  }
+  const row = rows5.find((r) => r !== null && typeof r === "object" && !Array.isArray(r) && r["id"] === decision);
+  const standing = row === void 0 ? "absent" : standingOf(row).status;
+  if (standing !== "ratified") {
+    h.cli.die(`${decision} is ${standing === "absent" ? "not in governance/decisions.json" : `${standing}, not ratified`} \u2014 the review closes on a ratified decision. Record the owner's ruling (scrumux decide new \u2026 --authority direct), or ratify it (scrumux decide ratify ${decision} --by WHO --authority \u2026), then re-run`);
+  }
+  writeRecord(h, { ...rec, review: { status: "closed", decision } });
+  return harnessEmit(h, `harness readmit: the sequester review is closed under ${decision}; the next harness deploy drops the sequester note from CLAUDE.md.`, { commit_paths: commitPaths(h) });
+}
+function destOk(p) {
+  const n = normalize(p);
+  return !isAbsolute2(n) && !n.startsWith("..") && !n.startsWith(`${SEQ_DIR}/`) && n !== SEQ_RECORD;
+}
+function harnessReadmit(h, o) {
+  const { cli, target } = h;
+  cli.say(`=== HARNESS READMIT -> ${target} (${h.ctx.today}) ===`);
+  const rec = readRecord(target);
+  if (rec === null) return cli.die(`no ${SEQ_RECORD} in ${target} \u2014 nothing has been sequestered there, so there is nothing to re-admit`);
+  if (o.close) return closeReview(h, rec, o.decision);
+  const e = rec.entries.find((x) => x.from === o.entry || x.to === o.entry);
+  if (e === void 0) {
+    const known = rec.entries.slice(0, 8).map((x) => x.from).join(" ");
+    return cli.die(`${o.entry} is not a sequestered entry in ${SEQ_RECORD} \u2014 name it by the path it came from: ${known === "" ? "(none recorded)" : known}`);
+  }
+  const to = normalize(o.to ?? STANDARDS);
+  if (!destOk(to)) cli.dieUsage(`--to ${o.to} must be a path inside ${target}, outside ${SEQ_DIR}/ \u2014 e.g. --to ${STANDARDS}`);
+  if (rec.readmitted.some((r) => r.entry === e.from && r.to === to)) {
+    cli.note("already-readmitted", `${e.from} was already re-admitted to ${to}; nothing was copied twice`);
+    return harnessEmit(h, `harness readmit: ${e.from} is already in force at ${to}; nothing changed.`, { commit_paths: [] });
+  }
+  let content;
+  try {
+    content = readFileSync24(join30(target, e.to), "utf8");
+  } catch {
+    return cli.die(`${e.to} cannot be read \u2014 restore it from git (git -C ${target} checkout -- ${e.to}), then re-run`);
+  }
+  const abs = join30(target, to);
+  const existed = isFile(abs);
+  if (existed && !to.endsWith(".md")) {
+    cli.die(`${to} already exists and is not markdown, so the content cannot be appended under a heading \u2014 name a --to that does not exist yet, or move ${to} first`);
+  }
+  try {
+    mkdirSync7(dirname10(abs), { recursive: true });
+    if (!existed && to === STANDARDS) writeFileSync10(abs, STANDARDS_HEAD);
+    if (existed || to === STANDARDS) {
+      appendFileSync2(abs, `
+## Re-admitted from \`${e.from}\` (${h.ctx.today})
+
+${content.replace(/\n*$/, "\n")}`);
+    } else {
+      writeFileSync10(abs, content);
+    }
+  } catch {
+    cli.die(`cannot write ${to} in ${target} \u2014 check the target's permissions`);
+  }
+  item(h, to, existed ? "UPDATED" : "CREATED", `re-admitted from ${e.from}: ${o.reason}`);
+  writeRecord(h, { ...rec, readmitted: [...rec.readmitted, { entry: e.from, to, reason: o.reason, at: h.ctx.today }] });
+  return harnessEmit(h, `harness readmit: ${e.from} is back in force at ${to} (${o.reason}); the sequestered copy stays as the record.`, { commit_paths: commitPaths(h) });
+}
+
 // src/nouns/harness.ts
-var VERBS_TSV7 = "deploy	install the machinery into a target repo\nverify	prove the machinery is INSTALLED in a target repo\n";
+var VERBS = ["deploy", "verify", "sequester", "digest", "readmit"];
+var VERBS_TSV7 = "deploy	install the machinery into a target repo\nverify	prove the machinery is INSTALLED in a target repo\nsequester	move the instructions that came before the harness out of force\ndigest	read-only review material for what was sequestered\nreadmit	put sequestered content back in force, or close the review\n";
 var USAGE6 = NOUN_USAGE["harness"] ?? "";
+var SYNOPSIS = {
+  deploy: "scrumux harness deploy <target> [--json]",
+  verify: "scrumux harness verify <target> [--json]",
+  sequester: "scrumux harness sequester <target> [--dry-run] [--keep PATH --reason R]... [--json]",
+  digest: "scrumux harness digest <target> [--json]",
+  readmit: "scrumux harness readmit <target> <entry> [--to PATH] --reason R | <target> --close --decision D-XXXX [--json]"
+};
+function parseArgs(cli, verb, args) {
+  const usage = `usage: ${SYNOPSIS[verb]}`;
+  const out = { target: "", dryRun: false, keep: [], readmit: { close: false } };
+  const positional = [];
+  let pendingKeep = null;
+  const flags = {
+    sequester: ["--dry-run", "--keep", "--reason"],
+    readmit: ["--to", "--reason", "--close", "--decision"]
+  };
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    if (!a.startsWith("-")) {
+      positional.push(a);
+      continue;
+    }
+    if (!(flags[verb] ?? []).includes(a)) cli.dieUsage(`unknown flag ${a} \u2014 ${usage}`);
+    if (a === "--dry-run") {
+      out.dryRun = true;
+      continue;
+    }
+    if (a === "--close") {
+      out.readmit.close = true;
+      continue;
+    }
+    const v = args[i + 1];
+    if (v === void 0 || v.startsWith("--")) cli.dieUsage(`${a} needs a value \u2014 ${usage}`);
+    i += 1;
+    if (a === "--keep") {
+      if (pendingKeep !== null) cli.dieUsage(`--keep ${pendingKeep} needs its own --reason before the next --keep \u2014 ${usage}`);
+      pendingKeep = v;
+    } else if (a === "--reason" && verb === "sequester") {
+      if (pendingKeep === null) cli.dieUsage(`--reason must follow the --keep it explains \u2014 ${usage}`);
+      out.keep.push({ path: pendingKeep, reason: v });
+      pendingKeep = null;
+    } else if (a === "--reason") out.readmit.reason = v;
+    else if (a === "--to") out.readmit.to = v;
+    else out.readmit.decision = v;
+  }
+  if (pendingKeep !== null) cli.dieUsage(`--keep ${pendingKeep} needs a --reason \u2014 ${usage}`);
+  if (positional.length === 0) cli.dieUsage(`${verb} needs a target repo \u2014 ${usage}`);
+  const wantPos = verb === "readmit" && !out.readmit.close ? 2 : 1;
+  if (verb !== "readmit" && positional.length > 1) {
+    cli.dieUsage(`harness takes ONE target, got '${positional[0]}' and '${positional[1]}' \u2014 ${usage}`);
+  }
+  if (verb === "readmit") {
+    if (positional.length !== wantPos) cli.dieUsage(`readmit takes ${wantPos === 2 ? "a target and one sequestered entry" : "only a target with --close"} \u2014 ${usage}`);
+    if (out.readmit.close && out.readmit.decision === void 0) cli.dieUsage(`--close needs --decision D-XXXX, the ratified decision that closes the review \u2014 ${usage}`);
+    if (!out.readmit.close && out.readmit.reason === void 0) cli.dieUsage(`readmit needs --reason, recorded with what is re-admitted \u2014 ${usage}`);
+    if (positional[1] !== void 0) out.readmit.entry = positional[1];
+  }
+  out.target = positional[0];
+  return out;
+}
 function harnessRun(cli, ctx, verb, args) {
-  if (verb !== "deploy" && verb !== "verify") {
-    cli.dieUsage(`unknown verb '${verb}' for noun harness \u2014 verbs: deploy, verify. See: scrumux help harness`);
+  if (!VERBS.includes(verb)) {
+    cli.dieUsage(`unknown verb '${verb}' for noun harness \u2014 verbs: ${VERBS.join(", ")}. See: scrumux help harness`);
   }
-  let target = "";
-  for (const a of args) {
-    if (a.startsWith("-")) {
-      cli.dieUsage(`unknown flag ${a} \u2014 usage: scrumux harness ${verb} <target> [--json]`);
-    }
-    if (target !== "") {
-      cli.dieUsage(`harness takes ONE target, got '${target}' and '${a}' \u2014 usage: scrumux harness ${verb} <target> [--json]`);
-    }
-    target = a;
-  }
-  if (target === "") {
-    cli.dieUsage(`${verb} needs a target repo \u2014 usage: scrumux harness ${verb} <target> [--json]`);
-  }
+  const parsed = parseArgs(cli, verb, args);
+  const target = parsed.target;
   const nctx = nounContext(ctx);
   const abs = resolve4(nctx.cwd, target);
   let isDir2 = false;
   try {
-    isDir2 = statSync9(abs).isDirectory();
+    isDir2 = statSync11(abs).isDirectory();
   } catch {
     isDir2 = false;
   }
@@ -7477,6 +8414,9 @@ function harnessRun(cli, ctx, verb, args) {
     rows: 0
   };
   if (verb === "deploy") return harnessDeploy(h);
+  if (verb === "sequester") return harnessSequester(h, { dryRun: parsed.dryRun, keep: parsed.keep });
+  if (verb === "digest") return harnessDigest(h);
+  if (verb === "readmit") return harnessReadmit(h, parsed.readmit);
   return harnessVerify(h);
 }
 var MODULE7 = {
@@ -7486,7 +8426,7 @@ var MODULE7 = {
 };
 
 // src/nouns/health.ts
-import { join as join26 } from "node:path";
+import { join as join31 } from "node:path";
 var VERBS_TSV8 = "add	the only verb\n";
 var USAGE7 = NOUN_USAGE["health"] ?? "";
 var SEED3 = '{"entries": []}';
@@ -7566,7 +8506,7 @@ function healthAdd(cli, ctx, io, args) {
   if (f.timeout !== "" && /[^0-9]/.test(f.timeout)) {
     cli.die("health: --timeout must be an integer (seconds)");
   }
-  const path = join26(ctx.gov, "repo-health.json");
+  const path = join31(ctx.gov, "repo-health.json");
   const opts = { gov: ctx.gov, today: ctx.today, env: ctx.env, err: (s2) => io.err(s2) };
   let displaced = [];
   refusing(cli, () => {
@@ -7601,16 +8541,16 @@ var MODULE8 = {
 };
 
 // src/nouns/issue.ts
-import { readFileSync as readFileSync21 } from "node:fs";
-import { join as join28 } from "node:path";
+import { readFileSync as readFileSync26 } from "node:fs";
+import { join as join33 } from "node:path";
 
 // src/nouns/issue-read.ts
-import { readFileSync as readFileSync20 } from "node:fs";
-import { join as join27 } from "node:path";
+import { readFileSync as readFileSync25 } from "node:fs";
+import { join as join32 } from "node:path";
 var STATUSES = ["open", "accepted", "resolved", "rejected", "all"];
 function issueRows(gov) {
   try {
-    return entriesOf(parsePreservingNumbers(readFileSync20(join27(gov, "issues.json"), "utf8")));
+    return entriesOf(parsePreservingNumbers(readFileSync25(join32(gov, "issues.json"), "utf8")));
   } catch {
     return [];
   }
@@ -7725,7 +8665,7 @@ var VERDICTS = ["reproduced", "evidenced", "invalidated", "duplicate"];
 var STATUSES2 = ["open", "accepted", "resolved", "rejected"];
 var SEVERITIES = ["low", "medium", "high", "critical"];
 function issuesPath(ctx) {
-  return join28(ctx.gov, "issues.json");
+  return join33(ctx.gov, "issues.json");
 }
 function requireIssue(cli, ctx, verb, id) {
   if (refExists(issuesPath(ctx), id)) return;
@@ -8168,21 +9108,21 @@ var MODULE9 = {
 };
 function readDoc(path) {
   try {
-    return parsePreservingNumbers(readFileSync21(path, "utf8"));
+    return parsePreservingNumbers(readFileSync26(path, "utf8"));
   } catch {
     return null;
   }
 }
 
 // src/nouns/log.ts
-import { join as join30 } from "node:path";
+import { join as join35 } from "node:path";
 
 // src/nouns/log-show.ts
-import { readFileSync as readFileSync22 } from "node:fs";
-import { join as join29 } from "node:path";
+import { readFileSync as readFileSync27 } from "node:fs";
+import { join as join34 } from "node:path";
 function logRows(gov) {
   try {
-    return entriesOf(parsePreservingNumbers(readFileSync22(join29(gov, "log.json"), "utf8")));
+    return entriesOf(parsePreservingNumbers(readFileSync27(join34(gov, "log.json"), "utf8")));
   } catch {
     return [];
   }
@@ -8315,7 +9255,7 @@ function logNew(cli, ctx, io, args) {
     cli.die('log: --did is required (what_was_done) \u2014 the EVIDENCE, not a story: the verify command and its rc, git diff --stat, and every refusal you hit and what you did about it. GOOD "harness deploy seeding lane creates .claude/rules/project-standards.md and .claude/project-walls.conf create-if-absent; the I-0143 prune then removed any path the previous manifest names that payload.list lacks. Fixed by writing each seeded path into TMPD/seeded.list and skipping it in the prune. sh tests/harness-tests.sh rc=0; 3 files changed, 61 insertions" (L-0285). GOOD "scrumux repair on governance/decisions.json. Reason: stamping the back-references for D-0081 and D-0082, without which the twenty dead rulings go on rendering as current law" (L-0284). BAD "created X, verified Y" \u2014 nothing there can be checked by a reader who was not present.');
   }
   if (f.task !== "") refusing(cli, () => requireTaskRef(ctx.gov, f.task));
-  const logPath = join30(ctx.gov, "log.json");
+  const logPath = join35(ctx.gov, "log.json");
   const opts = { gov: ctx.gov, today: ctx.today, env: ctx.env, err: (s2) => io.err(s2) };
   const id = refusing(cli, () => {
     ensureFile(logPath, SEED5);
@@ -8329,7 +9269,7 @@ function logNew(cli, ctx, io, args) {
     warnReseal(cli, res.resealWarning);
     if (f.task !== "") {
       const back = writeJson(
-        join30(ctx.gov, "tasks.json"),
+        join35(ctx.gov, "tasks.json"),
         (doc) => mapEntries(doc, (row) => {
           if (field(row, "id") !== f.task) return row;
           const o = row;
@@ -8362,8 +9302,8 @@ var MODULE10 = {
 };
 
 // src/nouns/memory.ts
-import { existsSync as existsSync12, mkdirSync as mkdirSync6, readFileSync as readFileSync23, statSync as statSync10, writeFileSync as writeFileSync8 } from "node:fs";
-import { join as join31 } from "node:path";
+import { existsSync as existsSync12, mkdirSync as mkdirSync8, readFileSync as readFileSync28, statSync as statSync12, writeFileSync as writeFileSync11 } from "node:fs";
+import { join as join36 } from "node:path";
 var VERBS_TSV11 = "add	the only verb\n";
 var USAGE9 = NOUN_USAGE["memory"] ?? "";
 var MEMORY_HEADER = `# validator-memory.md \u2014 issue-validator's durable memory
@@ -8409,7 +9349,7 @@ function blockLineCount(block) {
 }
 var readStdin = () => {
   try {
-    return readFileSync23(0, "utf8");
+    return readFileSync28(0, "utf8");
   } catch {
     return "";
   }
@@ -8423,7 +9363,7 @@ function memoryAdd(cli, ctx, args, stdin) {
   if (f.file !== "") {
     if (!isFile(f.file)) cli.die(`memory: --file ${f.file} does not exist`);
     try {
-      block = stripTrailingNewlines2(readFileSync23(f.file, "utf8"));
+      block = stripTrailingNewlines2(readFileSync28(f.file, "utf8"));
     } catch {
       block = "";
     }
@@ -8433,17 +9373,17 @@ function memoryAdd(cli, ctx, args, stdin) {
   if (block === "") {
     cli.die("memory: the block is empty \u2014 refusing to append a heading with nothing under it (an empty run is not a run)");
   }
-  const mem = join31(ctx.gov, "validator-memory.md");
+  const mem = join36(ctx.gov, "validator-memory.md");
   let created = false;
   refusing(cli, () => {
     if (!isFile(mem)) {
       try {
-        mkdirSync6(ctx.gov, { recursive: true });
+        mkdirSync8(ctx.gov, { recursive: true });
       } catch {
         throw new JournalRefusal(`memory: cannot create ${ctx.gov}`);
       }
       try {
-        writeFileSync8(mem, MEMORY_HEADER);
+        writeFileSync11(mem, MEMORY_HEADER);
       } catch {
         throw new JournalRefusal(`memory: cannot create ${mem}`);
       }
@@ -8456,7 +9396,7 @@ function memoryAdd(cli, ctx, args, stdin) {
   const heading = `## Run ${ctx.today} \u2014 ${f.by}`;
   refusing(cli, () => {
     try {
-      writeFileSync8(mem, `
+      writeFileSync11(mem, `
 ${heading}
 
 ${block}
@@ -8471,7 +9411,7 @@ ${block}
 function isNonEmptyFile(p) {
   if (!existsSync12(p)) return false;
   try {
-    return statSync10(p).size > 0;
+    return statSync12(p).size > 0;
   } catch {
     return false;
   }
@@ -8492,15 +9432,15 @@ var MODULE11 = {
 };
 
 // src/nouns/rank.ts
-import { existsSync as existsSync13, readFileSync as readFileSync24 } from "node:fs";
-import { join as join32 } from "node:path";
+import { existsSync as existsSync13, readFileSync as readFileSync29 } from "node:fs";
+import { join as join37 } from "node:path";
 var VERBS_TSV12 = `set	move a backlog item to a position
 clear	return an item to never-prioritised
 `;
 function rows2(path) {
   if (!existsSync13(path)) return [];
   try {
-    const doc = parsePreservingNumbers(readFileSync24(path, "utf8"));
+    const doc = parsePreservingNumbers(readFileSync29(path, "utf8"));
     if (doc === null || typeof doc !== "object" || Array.isArray(doc)) return [];
     const e = doc["entries"];
     return Array.isArray(e) ? e : [];
@@ -8573,7 +9513,7 @@ function rankImpl(cli, ctx, ictx, ref, newposRaw, clear) {
     if (newpos < 1) cli.die("scrumux rank: new-# must be >= 1");
   }
   if (ref.startsWith("F-")) {
-    const design = join32(ctx.gov, "design.json");
+    const design = join37(ctx.gov, "design.json");
     if (!existsSync13(design)) cli.die("scrumux rank: no design.json yet \u2014 nothing to rank");
     const isFeature = (r) => {
       const o = obj3(r);
@@ -8608,7 +9548,7 @@ function rankImpl(cli, ctx, ictx, ref, newposRaw, clear) {
     sealBootstrap(ctx.gov, ctx.today);
     return cli.emit(clear ? `${ref} -> rank cleared` : `${ref} -> rank ${newpos}`);
   }
-  const tasks = join32(ctx.gov, "tasks.json");
+  const tasks = join37(ctx.gov, "tasks.json");
   if (!existsSync13(tasks)) cli.die("scrumux rank: no tasks.json yet \u2014 nothing to rank");
   const all = rows2(tasks);
   const open = all.filter((r) => {
@@ -8684,8 +9624,8 @@ var MODULE12 = {
 };
 
 // src/nouns/records.ts
-import { existsSync as existsSync14, readFileSync as readFileSync25, readdirSync as readdirSync4 } from "node:fs";
-import { join as join33 } from "node:path";
+import { existsSync as existsSync14, readFileSync as readFileSync30, readdirSync as readdirSync4 } from "node:fs";
+import { join as join38 } from "node:path";
 var VERBS_TSV13 = "check	validate the journals, refs, rule chains, rosters and seals\n";
 var USAGE10 = `scrumux records \u2014 the repo validator.
 
@@ -8777,7 +9717,7 @@ function frontmatterList(fm, key) {
 function loadJournal2(path) {
   if (!existsSync14(path) || !isFile(path)) return { path, doc: null, broken: false };
   try {
-    return { path, doc: parsePreservingNumbers(readFileSync25(path, "utf8")), broken: false };
+    return { path, doc: parsePreservingNumbers(readFileSync30(path, "utf8")), broken: false };
   } catch {
     return { path, doc: null, broken: true };
   }
@@ -8845,7 +9785,7 @@ function recordsCheck(cli, ctx, argv) {
   const sweepStructure = () => {
     human(`=== VALIDATE \u2014 structure (${ctx.today}) ===`);
     for (const name of govJsonFiles(gov)) {
-      const p = join33(gov, name);
+      const p = join38(gov, name);
       const j = loadJournal2(p);
       if (j.broken) {
         f(`${p} is not valid JSON \u2014 restore from git (git checkout -- ${p}) or repair by hand, then re-run`);
@@ -8866,13 +9806,13 @@ function recordsCheck(cli, ctx, argv) {
         f(`${p} has duplicate ids: ${dupText} \u2014 ids are allocated by scrumux; hand-edits must not reuse them`);
       }
     }
-    const tasksJ = loadJournal2(join33(gov, "tasks.json"));
-    const designJ = loadJournal2(join33(gov, "design.json"));
-    const decJ = loadJournal2(join33(gov, "decisions.json"));
-    const issJ = loadJournal2(join33(gov, "issues.json"));
-    const logJ = loadJournal2(join33(gov, "log.json"));
-    const sprJ = loadJournal2(join33(gov, "sprints.json"));
-    const healthJ = loadJournal2(join33(gov, "repo-health.json"));
+    const tasksJ = loadJournal2(join38(gov, "tasks.json"));
+    const designJ = loadJournal2(join38(gov, "design.json"));
+    const decJ = loadJournal2(join38(gov, "decisions.json"));
+    const issJ = loadJournal2(join38(gov, "issues.json"));
+    const logJ = loadJournal2(join38(gov, "log.json"));
+    const sprJ = loadJournal2(join38(gov, "sprints.json"));
+    const healthJ = loadJournal2(join38(gov, "repo-health.json"));
     const des = designView(designJ.doc);
     const featureIds = idsOf(des["features"]);
     const storyIds = idsOf(des["stories"]);
@@ -9134,11 +10074,11 @@ function recordsCheck(cli, ctx, argv) {
       }
       return out;
     });
-    for (const r of globFiles(join33(root, hd, "rules"), (n2) => n2.endsWith(".md"))) {
+    for (const r of globFiles(join38(root, hd, "rules"), (n2) => n2.endsWith(".md"))) {
       const rb = r.split("/").pop();
       let text2;
       try {
-        text2 = readFileSync25(r, "utf8");
+        text2 = readFileSync30(r, "utf8");
       } catch {
         continue;
       }
@@ -9150,17 +10090,17 @@ function recordsCheck(cli, ctx, argv) {
       if (!fm.some((l) => l.startsWith("name:"))) f(`rules: ${rb} frontmatter missing name`);
       if (!fm.some((l) => l.startsWith("paths:"))) f(`rules: ${rb} frontmatter missing paths`);
       for (const s2 of frontmatterList(fm, "skills")) {
-        if (!isFile(join33(root, hd, "skills", s2, "SKILL.md"))) {
+        if (!isFile(join38(root, hd, "skills", s2, "SKILL.md"))) {
           w(`rules: ${rb} points to skill '${s2}' not in this repo's ${hd}/skills \u2014 fine if user-level; if not, it is drift`);
         }
       }
       for (const s2 of frontmatterList(fm, "scripts")) {
-        if (!isFile(join33(root, s2))) {
+        if (!isFile(join38(root, s2))) {
           f(`rules: ${rb} points to script ${s2} which does not exist \u2014 fix the pointer or restore the script`);
         }
       }
       for (const s2 of frontmatterList(fm, "hooks")) {
-        if (!isFile(join33(root, s2))) {
+        if (!isFile(join38(root, s2))) {
           f(`rules: ${rb} points to hook ${s2} which does not exist \u2014 fix the pointer or restore the hook`);
         }
       }
@@ -9185,7 +10125,7 @@ function recordsCheck(cli, ctx, argv) {
           tok = rest.split(" ")[0] ?? "";
         }
         if (!tok.includes("/")) continue;
-        const p = tok.startsWith("/") ? tok : join33(root, tok);
+        const p = tok.startsWith("/") ? tok : join38(root, tok);
         if (!existsSync14(p)) {
           f(
             `repo-health: check '${name}' runs '${cmd}' but ${tok} is not on disk \u2014 de-register the check (scrumux repair journal repo-health.json) or restore the file`
@@ -9193,10 +10133,10 @@ function recordsCheck(cli, ctx, argv) {
         }
       }
     }
-    const spec = join33(root, "PROJECT_SPEC.MD");
-    const skidx = join33(root, "SKILLS_INDEX.MD");
+    const spec = join38(root, "PROJECT_SPEC.MD");
+    const skidx = join38(root, "SKILLS_INDEX.MD");
     if (isFile(spec)) {
-      const specText = readFileSync25(spec, "utf8");
+      const specText = readFileSync30(spec, "utf8");
       const rosters = {};
       for (const sec of ["Agents", "Skills", "Rules"]) {
         const got = rosterSection(specText, sec);
@@ -9218,8 +10158,8 @@ function recordsCheck(cli, ctx, argv) {
       } else {
         rosters["Scripts"] = scripts;
       }
-      const idxLines = isFile(skidx) ? readFileSync25(skidx, "utf8").split("\n") : null;
-      for (const a of globFiles(join33(root, hd, "agents"), (n2) => n2.endsWith(".md"))) {
+      const idxLines = isFile(skidx) ? readFileSync30(skidx, "utf8").split("\n") : null;
+      for (const a of globFiles(join38(root, hd, "agents"), (n2) => n2.endsWith(".md"))) {
         const ab = basenameNoExt(a, ".md");
         if (!rosterNames(rosters["Agents"], ab)) {
           f(
@@ -9227,7 +10167,7 @@ function recordsCheck(cli, ctx, argv) {
           );
         }
       }
-      for (const s2 of globDirs(join33(root, hd, "skills"))) {
+      for (const s2 of globDirs(join38(root, hd, "skills"))) {
         const sb = s2.split("/").pop();
         if (!rosterNames(rosters["Skills"], sb)) {
           f(
@@ -9238,7 +10178,7 @@ function recordsCheck(cli, ctx, argv) {
           f(`skills index drift: ${sb} exists in ${hd}/skills/ but SKILLS_INDEX.MD does not list it \u2014 add its row`);
         }
       }
-      for (const r of globFiles(join33(root, hd, "rules"), (n2) => n2.endsWith(".md"))) {
+      for (const r of globFiles(join38(root, hd, "rules"), (n2) => n2.endsWith(".md"))) {
         const rb = basenameNoExt(r, ".md");
         if (!rosterNames(rosters["Rules"], rb)) {
           f(
@@ -9246,7 +10186,7 @@ function recordsCheck(cli, ctx, argv) {
           );
         }
       }
-      for (const sc of globFiles(join33(root, hd, "scripts"), () => true)) {
+      for (const sc of globFiles(join38(root, hd, "scripts"), () => true)) {
         const scb = sc.split("/").pop();
         if (scb.startsWith(".")) continue;
         if (!rosterNames(rosters["Scripts"], scb)) {
@@ -9266,7 +10206,7 @@ function recordsCheck(cli, ctx, argv) {
         `${shape} \u2014 restore it from git, or rebuild it with a gov write after checking the journals by hand. Until then this check is not speaking for any journal (T-0100/I-0047)`
       );
     }
-    const sealsPath = join33(gov, SEAL_FILE_NAME);
+    const sealsPath = join38(gov, SEAL_FILE_NAME);
     const sealsDoc = loadJournal2(sealsPath);
     const over = sealsDoc.doc === null ? null : field(sealsDoc.doc, "bootstrapped_over_existing_content");
     if (over !== null && truthy(over) && interp(over) !== "") {
@@ -9278,7 +10218,7 @@ function recordsCheck(cli, ctx, argv) {
       let unsealed = "";
       const map = sealsDoc.doc === null ? null : asObject(field(sealsDoc.doc, "journals"));
       for (const sj of SEALED_JOURNALS) {
-        if (!isFile(join33(gov, sj))) continue;
+        if (!isFile(join38(gov, sj))) continue;
         if (map === null || !Object.prototype.hasOwnProperty.call(map, sj)) unsealed += ` ${sj}`;
       }
       if (unsealed !== "") {
@@ -9292,7 +10232,7 @@ function recordsCheck(cli, ctx, argv) {
         `governance/${b} was changed outside scrumux \u2014 its content does not match the seal recorded by the last gov write. If the change was intentional, make it with scrumux repair journal ${b} --apply '<jq>' --why '...' so the correction carries its own record; if not, restore it from git (T-0100/I-0047)`
       );
     }
-    if (isFile(join33(gov, "tasks.json"))) {
+    if (isFile(join38(gov, "tasks.json"))) {
       const noAuth = ents(tasksJ).filter((e) => {
         const acc = field(e, "acceptance");
         return acc !== null && field(acc, "accepted") === true && strOr(field(acc, "authority")).length === 0;
@@ -9303,7 +10243,7 @@ function recordsCheck(cli, ctx, argv) {
         );
       }
     }
-    if (isFile(join33(gov, "sprints.json"))) {
+    if (isFile(join38(gov, "sprints.json"))) {
       const noRAuth = ents(sprJ).filter((e) => {
         const r = field(e, "ratified");
         return r !== null && strOr(field(r, "authority")).length === 0;
@@ -9314,7 +10254,7 @@ function recordsCheck(cli, ctx, argv) {
         );
       }
     }
-    if (isFile(join33(gov, "issues.json"))) {
+    if (isFile(join38(gov, "issues.json"))) {
       const selfv = ents(issJ).filter((e) => {
         const v = field(e, "validation");
         const src = field(e, "source");
@@ -9401,7 +10341,7 @@ function globFiles(dir, keep) {
   } catch {
     return [];
   }
-  return names.filter((n) => !n.startsWith(".")).filter(keep).sort(cmpString).map((n) => join33(dir, n)).filter(isFile);
+  return names.filter((n) => !n.startsWith(".")).filter(keep).sort(cmpString).map((n) => join38(dir, n)).filter(isFile);
 }
 function globDirs(dir) {
   let names;
@@ -9410,7 +10350,7 @@ function globDirs(dir) {
   } catch {
     return [];
   }
-  return names.filter((n) => !n.startsWith(".")).sort(cmpString).map((n) => join33(dir, n)).filter(isDir);
+  return names.filter((n) => !n.startsWith(".")).sort(cmpString).map((n) => join38(dir, n)).filter(isDir);
 }
 function basenameNoExt(p, ext) {
   const b = p.split("/").pop();
@@ -9418,10 +10358,10 @@ function basenameNoExt(p, ext) {
 }
 
 // src/nouns/repair.ts
-import { spawnSync as spawnSync8 } from "node:child_process";
+import { spawnSync as spawnSync9 } from "node:child_process";
 import { createHash as createHash2 } from "node:crypto";
-import { readFileSync as readFileSync26 } from "node:fs";
-import { join as join34 } from "node:path";
+import { readFileSync as readFileSync31 } from "node:fs";
+import { join as join39 } from "node:path";
 var VERBS_TSV14 = `journal	a bounded correction to one journal, with its own log entry
 `;
 var SEED6 = '{"entries": []}';
@@ -9463,10 +10403,10 @@ function repairImpl(cli, ctx, ictx, argv) {
       "repair: --by is required \u2014 name who is repairing. It defaulted to User, which is the wrong name to put on the most consequential write in the CLI."
     );
   }
-  const path = join34(ctx.gov, jf);
+  const path = join39(ctx.gov, jf);
   if (!isFile(path)) cli.die(`repair: no journal at governance/${jf}`);
   const before = sealOf(path);
-  const r = spawnSync8("jq", [expr, path], { encoding: "utf8" });
+  const r = spawnSync9("jq", [expr, path], { encoding: "utf8" });
   if (r.status !== 0) {
     const said = firstLine(r.stderr ?? "");
     cli.die(
@@ -9510,7 +10450,7 @@ function repairImpl(cli, ctx, ictx, argv) {
 }
 function entryCount(path) {
   try {
-    const doc = parsePreservingNumbers(readFileSync26(path, "utf8"));
+    const doc = parsePreservingNumbers(readFileSync31(path, "utf8"));
     if (doc === null || typeof doc !== "object" || Array.isArray(doc)) return 0;
     const e = doc["entries"];
     return Array.isArray(e) ? e.length : 0;
@@ -9519,7 +10459,7 @@ function entryCount(path) {
   }
 }
 function logRepair(cli, ctx, io, r) {
-  const path = join34(ctx.gov, "log.json");
+  const path = join39(ctx.gov, "log.json");
   const record = {
     date: ctx.today,
     task: null,
@@ -9580,10 +10520,10 @@ function firstLine(s2) {
 }
 
 // src/nouns/secret.ts
-import { spawnSync as spawnSync9 } from "node:child_process";
+import { spawnSync as spawnSync10 } from "node:child_process";
 import { createHash as createHash3 } from "node:crypto";
-import { appendFileSync as appendFileSync2, chmodSync as chmodSync4, readFileSync as readFileSync27, writeFileSync as writeFileSync9 } from "node:fs";
-import { join as join35 } from "node:path";
+import { appendFileSync as appendFileSync3, chmodSync as chmodSync6, readFileSync as readFileSync32, writeFileSync as writeFileSync12 } from "node:fs";
+import { join as join40 } from "node:path";
 var VERBS_TSV15 = `set	store a secret in this repo's .env (pipe the value on stdin)
 list	names, sizes and fingerprints \u2014 never values
 remove	drop one name from .env
@@ -9630,13 +10570,13 @@ function parseEnv(text2) {
   return out;
 }
 function secretList(cli, ctx) {
-  const envf = join35(ctx.root, ".env");
+  const envf = join40(ctx.root, ".env");
   if (!isFile(envf)) {
     cli.say("no .env yet \u2014 nothing stored");
     cli.emit("");
   }
   cli.say("secrets in .env (names and fingerprints only \u2014 values are never printed):");
-  const rows5 = parseEnv(readFileSync27(envf, "utf8"));
+  const rows5 = parseEnv(readFileSync32(envf, "utf8"));
   for (const r of rows5) {
     cli.say(`  ${r.name.padEnd(28)} ${r.bytes} bytes  sha256:${r.sha256_prefix}`);
   }
@@ -9661,23 +10601,23 @@ function envDropText(text2, name) {
 function envDrop(cli, file, name) {
   let text2;
   try {
-    text2 = readFileSync27(file, "utf8");
+    text2 = readFileSync32(file, "utf8");
   } catch {
     text2 = "";
   }
   const out = envDropText(text2, name);
   try {
-    writeFileSync9(file, "");
+    writeFileSync12(file, "");
   } catch {
     cli.die(`secret: cannot rewrite ${file}`);
   }
   secure(file);
-  if (out !== "") appendFileSync2(file, out);
+  if (out !== "") appendFileSync3(file, out);
   secure(file);
 }
 function secure(file) {
   try {
-    chmodSync4(file, 384);
+    chmodSync6(file, 384);
   } catch {
   }
 }
@@ -9685,16 +10625,16 @@ function gitignoreCoversEnv(text2) {
   return grepLines(text2).some((l) => /^\.env$/.test(l) || /^\.env[ \t\v\f\r]*$/.test(l) || /^\/\.env$/.test(l));
 }
 function gitTracksEnv(root) {
-  const have = spawnSync9("sh", ["-c", "command -v git >/dev/null 2>&1"], { stdio: "ignore" });
+  const have = spawnSync10("sh", ["-c", "command -v git >/dev/null 2>&1"], { stdio: "ignore" });
   if (have.status !== 0) return false;
-  const inRepo = spawnSync9("git", ["-C", root, "rev-parse", "--git-dir"], { stdio: "ignore" });
+  const inRepo = spawnSync10("git", ["-C", root, "rev-parse", "--git-dir"], { stdio: "ignore" });
   if (inRepo.status !== 0) return false;
-  const tracked = spawnSync9("git", ["-C", root, "ls-files", "--error-unmatch", ".env"], { stdio: "ignore" });
+  const tracked = spawnSync10("git", ["-C", root, "ls-files", "--error-unmatch", ".env"], { stdio: "ignore" });
   return tracked.status === 0;
 }
 function readStdin2() {
   try {
-    return readFileSync27(0, "utf8").replace(/\n+$/, "");
+    return readFileSync32(0, "utf8").replace(/\n+$/, "");
   } catch {
     return "";
   }
@@ -9739,7 +10679,7 @@ function requireUsableName(cli, name) {
 function secretRemove(cli, ctx, args) {
   const { name } = parsePositional(cli, "remove", args);
   requireUsableName(cli, name);
-  const envf = join35(ctx.root, ".env");
+  const envf = join40(ctx.root, ".env");
   if (!isFile(envf)) cli.die(`secret: no .env to remove ${name} from`);
   const re = envMatcher(name);
   const text2 = safeRead(envf);
@@ -9754,8 +10694,8 @@ function secretSet(cli, ctx, args) {
   const say = (s2) => cli.say(s2);
   const { name, val: argvVal } = parsePositional(cli, "set", args);
   requireUsableName(cli, name);
-  const envf = join35(ctx.root, ".env");
-  const gi = join35(ctx.root, ".gitignore");
+  const envf = join40(ctx.root, ".env");
+  const gi = join40(ctx.root, ".gitignore");
   let val = argvVal;
   let fromArgv = true;
   if (val === "") {
@@ -9779,14 +10719,14 @@ function secretSet(cli, ctx, args) {
   }
   if (!isFile(gi)) {
     try {
-      writeFileSync9(gi, "# secrets \u2014 never commit\n.env\n");
+      writeFileSync12(gi, "# secrets \u2014 never commit\n.env\n");
     } catch {
       cli.die(`secret: cannot create ${gi}`);
     }
     say("created .gitignore covering .env");
   } else if (!gitignoreCoversEnv(safeRead(gi))) {
     try {
-      appendFileSync2(gi, "\n# secrets \u2014 never commit\n.env\n");
+      appendFileSync3(gi, "\n# secrets \u2014 never commit\n.env\n");
     } catch {
       cli.die(`secret: cannot append to ${gi}`);
     }
@@ -9799,12 +10739,12 @@ function secretSet(cli, ctx, args) {
   }
   if (!isFile(envf)) {
     try {
-      writeFileSync9(envf, "");
+      writeFileSync12(envf, "");
     } catch {
     }
   }
   try {
-    chmodSync4(envf, 384);
+    chmodSync6(envf, 384);
   } catch {
     cli.die(`secret: cannot secure ${envf} to mode 600`);
   }
@@ -9815,7 +10755,7 @@ function secretSet(cli, ctx, args) {
     verb = "replaced";
   }
   try {
-    appendFileSync2(envf, `${name}=${val}
+    appendFileSync3(envf, `${name}=${val}
 `);
   } catch {
     cli.die(`secret: cannot write to ${envf}`);
@@ -9837,7 +10777,7 @@ function secretSet(cli, ctx, args) {
 }
 function safeRead(p) {
   try {
-    return readFileSync27(p, "utf8");
+    return readFileSync32(p, "utf8");
   } catch {
     return "";
   }
@@ -9867,9 +10807,9 @@ var MODULE15 = {
 };
 
 // src/nouns/session.ts
-import { spawnSync as spawnSync10 } from "node:child_process";
-import { existsSync as existsSync15, readFileSync as readFileSync29, readdirSync as readdirSync6, statSync as statSync12 } from "node:fs";
-import { join as join38 } from "node:path";
+import { spawnSync as spawnSync11 } from "node:child_process";
+import { existsSync as existsSync15, readFileSync as readFileSync34, readdirSync as readdirSync6, statSync as statSync14 } from "node:fs";
+import { join as join43 } from "node:path";
 
 // src/nouns/task/receipt-freeze.ts
 var POST_ACCEPTANCE_KEEP = 10;
@@ -9898,13 +10838,13 @@ function redDrift(row) {
 }
 
 // src/nouns/session-fresh.ts
-import { statSync as statSync11 } from "node:fs";
-import { join as join37 } from "node:path";
+import { statSync as statSync13 } from "node:fs";
+import { join as join42 } from "node:path";
 
 // src/nouns/task/fingerprint.ts
 import { createHash as createHash4 } from "node:crypto";
-import { lstatSync as lstatSync2, readdirSync as readdirSync5, readFileSync as readFileSync28 } from "node:fs";
-import { isAbsolute as isAbsolute2, join as join36, normalize, relative as relative3, resolve as resolve5 } from "node:path";
+import { lstatSync as lstatSync2, readdirSync as readdirSync5, readFileSync as readFileSync33 } from "node:fs";
+import { isAbsolute as isAbsolute3, join as join41, normalize as normalize2, relative as relative3, resolve as resolve5 } from "node:path";
 
 // src/nouns/task/command-paths.ts
 var DIR_FLAGS = /* @__PURE__ */ new Set(["--directory", "--cwd", "--prefix", "-C", "--project", "--root-dir", "--rootdir"]);
@@ -9948,7 +10888,7 @@ var MAX_DIR_FILES = 2e3;
 function sha256File(abs) {
   try {
     if (!lstatSync2(abs).isFile()) return null;
-    return createHash4("sha256").update(readFileSync28(abs)).digest("hex");
+    return createHash4("sha256").update(readFileSync33(abs)).digest("hex");
   } catch {
     return null;
   }
@@ -9963,7 +10903,7 @@ function hashPath(abs) {
   if (st.isFile()) return sha256File(abs);
   if (!st.isDirectory()) return null;
   const files = [];
-  const walk = (dir, rel) => {
+  const walk = (dir, rel2) => {
     let names;
     try {
       names = readdirSync5(dir).sort();
@@ -9971,8 +10911,8 @@ function hashPath(abs) {
       return true;
     }
     for (const name of names) {
-      const p = join36(dir, name);
-      const r = rel === "" ? name : `${rel}/${name}`;
+      const p = join41(dir, name);
+      const r = rel2 === "" ? name : `${rel2}/${name}`;
       let s2;
       try {
         s2 = lstatSync2(p);
@@ -9991,7 +10931,7 @@ function hashPath(abs) {
   };
   if (!walk(abs, "")) return null;
   const h = createHash4("sha256");
-  for (const r of files) h.update(`${r}\0${sha256File(join36(abs, r)) ?? ""}
+  for (const r of files) h.update(`${r}\0${sha256File(join41(abs, r)) ?? ""}
 `);
   return h.digest("hex");
 }
@@ -9999,7 +10939,7 @@ function fileHashes(workRoot, paths) {
   const out = {};
   for (const p of paths) {
     if (p === "" || p in out) continue;
-    const h = sha256File(join36(workRoot, p));
+    const h = sha256File(join41(workRoot, p));
     if (h !== null) out[p] = h;
   }
   return out;
@@ -10020,21 +10960,21 @@ function coveredPaths(row) {
   return out;
 }
 function inside(root, abs) {
-  const rel = relative3(resolve5(root), resolve5(abs));
-  if (rel === "" || rel.startsWith("..") || isAbsolute2(rel)) return null;
-  return rel.split("\\").join("/");
+  const rel2 = relative3(resolve5(root), resolve5(abs));
+  if (rel2 === "" || rel2.startsWith("..") || isAbsolute3(rel2)) return null;
+  return rel2.split("\\").join("/");
 }
 function checkFingerprint(workRoot, command) {
   const files = {};
   const bases = ["", ...commandWorkDirs(command)];
   for (const w of commandPathWords(command)) {
     for (const base of bases) {
-      const abs = isAbsolute2(w) ? w : resolve5(workRoot, normalize(join36(base, w)));
-      const rel = inside(workRoot, abs);
-      if (rel === null || rel in files) continue;
+      const abs = isAbsolute3(w) ? w : resolve5(workRoot, normalize2(join41(base, w)));
+      const rel2 = inside(workRoot, abs);
+      if (rel2 === null || rel2 in files) continue;
       const h = hashPath(abs);
-      if (h !== null) files[rel] = h;
-      if (isAbsolute2(w)) break;
+      if (h !== null) files[rel2] = h;
+      if (isAbsolute3(w)) break;
     }
   }
   return { algo: "sha256", files };
@@ -10044,7 +10984,7 @@ function checkFingerprint(workRoot, command) {
 var asRow2 = (v) => v !== null && v !== void 0 && typeof v === "object" && !Array.isArray(v) ? v : null;
 function mtime(path) {
   try {
-    return Math.floor(statSync11(path).mtimeMs / 1e3);
+    return Math.floor(statSync13(path).mtimeMs / 1e3);
   } catch {
     return 0;
   }
@@ -10053,7 +10993,7 @@ function firstChanged(row, receipt, workRoot) {
   const hashes = asRow2(receipt["file_hashes"]);
   const at = Number(interp(receipt["at_epoch"] ?? null));
   for (const f of coveredPaths(row)) {
-    const p = join37(workRoot, f);
+    const p = join42(workRoot, f);
     if (!isFile(p)) continue;
     if (hashes !== null) {
       const want = hashes[f];
@@ -10122,7 +11062,7 @@ var NOT_NAMED = ["AI_LOG.MD", "DECISIONS.MD", "BACKLOG.MD"];
 function readDoc2(path) {
   if (!existsSync15(path)) return null;
   try {
-    return parsePreservingNumbers(readFileSync29(path, "utf8"));
+    return parsePreservingNumbers(readFileSync34(path, "utf8"));
   } catch {
     return null;
   }
@@ -10137,7 +11077,7 @@ function orEmpty(v) {
 function stubScan(workRoot) {
   const out = [];
   const marker = /STUB\(I-[0-9]{4}\)/g;
-  const walk = (dir, rel) => {
+  const walk = (dir, rel2) => {
     let names;
     try {
       names = readdirSync6(dir);
@@ -10145,12 +11085,12 @@ function stubScan(workRoot) {
       return;
     }
     for (const name of names) {
-      const childRel = rel === "" ? name : `${rel}/${name}`;
-      if (rel === "" && PRUNE.includes(name)) continue;
-      const p = join38(dir, name);
+      const childRel = rel2 === "" ? name : `${rel2}/${name}`;
+      if (rel2 === "" && PRUNE.includes(name)) continue;
+      const p = join43(dir, name);
       let st;
       try {
-        st = statSync12(p);
+        st = statSync14(p);
       } catch {
         continue;
       }
@@ -10162,7 +11102,7 @@ function stubScan(workRoot) {
       if (NOT_NAMED.includes(name)) continue;
       let text2;
       try {
-        text2 = readFileSync29(p, "utf8");
+        text2 = readFileSync34(p, "utf8");
       } catch {
         continue;
       }
@@ -10181,9 +11121,9 @@ function stubScan(workRoot) {
   return out;
 }
 function sessionCheck(cli, ctx) {
-  const tasksDoc = readDoc2(join38(ctx.gov, "tasks.json"));
-  const sprintsDoc = readDoc2(join38(ctx.gov, "sprints.json"));
-  const issuesDoc = readDoc2(join38(ctx.gov, "issues.json"));
+  const tasksDoc = readDoc2(join43(ctx.gov, "tasks.json"));
+  const sprintsDoc = readDoc2(join43(ctx.gov, "sprints.json"));
+  const issuesDoc = readDoc2(join43(ctx.gov, "issues.json"));
   const tasks = entriesOf(tasksDoc ?? void 0);
   const today = ctx.today;
   cli.say(`=== SESSION CHECK (${today}) ===`);
@@ -10259,7 +11199,7 @@ function sessionCheck(cli, ctx) {
     cli.fail("checks ran", `receipt reports zero checks run:${zero} \u2014 a green that proved nothing`);
   }
   if (isGitRepo(ctx.workRoot)) {
-    const porcelain = spawnSync10("git", ["status", "--porcelain"], {
+    const porcelain = spawnSync11("git", ["status", "--porcelain"], {
       cwd: ctx.workRoot,
       encoding: "utf8"
     });
@@ -10370,13 +11310,13 @@ var MODULE16 = {
   }
 };
 function isGitRepo(dir) {
-  const r = spawnSync10("git", ["-C", dir, "rev-parse", "--git-dir"], { stdio: "ignore" });
+  const r = spawnSync11("git", ["-C", dir, "rev-parse", "--git-dir"], { stdio: "ignore" });
   return r.status === 0;
 }
 
 // src/nouns/sprint.ts
-import { existsSync as existsSync16, readFileSync as readFileSync30 } from "node:fs";
-import { join as join39 } from "node:path";
+import { existsSync as existsSync16, readFileSync as readFileSync35 } from "node:fs";
+import { join as join44 } from "node:path";
 
 // src/nouns/sprint-additions.ts
 var asRow3 = (v) => v !== null && v !== void 0 && typeof v === "object" && !Array.isArray(v) ? v : null;
@@ -10432,13 +11372,13 @@ ratify	User's word turns a proposal into a plan
 status	complete or abandon a sprint
 `;
 var SEED7 = '{"entries": []}';
-var sprintsPath = (ctx) => join39(ctx.gov, "sprints.json");
-var issuesPath2 = (ctx) => join39(ctx.gov, "issues.json");
-var tasksPath = (ctx) => join39(ctx.gov, "tasks.json");
+var sprintsPath = (ctx) => join44(ctx.gov, "sprints.json");
+var issuesPath2 = (ctx) => join44(ctx.gov, "issues.json");
+var tasksPath = (ctx) => join44(ctx.gov, "tasks.json");
 function rows3(path) {
   if (!existsSync16(path)) return [];
   try {
-    const doc = parsePreservingNumbers(readFileSync30(path, "utf8"));
+    const doc = parsePreservingNumbers(readFileSync35(path, "utf8"));
     if (doc === null || typeof doc !== "object" || Array.isArray(doc)) return [];
     const e = doc["entries"];
     return Array.isArray(e) ? e : [];
@@ -10512,7 +11452,7 @@ function sprintNew(cli, ctx, ictx, args) {
         "sprint new: --epic E-0001 is required (sprints are epic-bounded, D-0004) \u2014 or use --hotfix --issue I-0001 for the fast lane"
       );
     }
-    const found = refExists(join39(ctx.gov, "design.json"), epic, (r2) => {
+    const found = refExists(join44(ctx.gov, "design.json"), epic, (r2) => {
       const o = obj4(r2);
       return o !== null && o["kind"] === "epic" ? o["id"] : void 0;
     });
@@ -10661,7 +11601,7 @@ function sprintDescope(cli, ctx, ictx, args) {
   if (!carried) {
     cli.die(`sprint descope: ${tid} is not carried by ${sid} \u2014 see the plan: .claude/scripts/scrumux status --sprint`);
   }
-  const logPath = join39(ctx.gov, "log.json");
+  const logPath = join44(ctx.gov, "log.json");
   if (existsSync16(logPath)) {
     const worked = rows3(logPath).filter((r) => {
       const o = obj4(r);
@@ -10853,7 +11793,7 @@ var MODULE17 = {
 // src/nouns/status.ts
 import { execFileSync as execFileSync2 } from "node:child_process";
 import { existsSync as existsSync17 } from "node:fs";
-import { join as join40 } from "node:path";
+import { join as join45 } from "node:path";
 var VERBS_TSV18 = `session	the orientation block; ALWAYS exits 0
 planning	sprint report + decision queue + validation sweep
 sprint	the sprint report alone
@@ -10893,7 +11833,7 @@ var State = class {
   load(name) {
     const hit = this.loaded.get(name);
     if (hit !== void 0) return hit;
-    const path = join40(this.gov, name);
+    const path = join45(this.gov, name);
     const r = readJournal(path);
     let v;
     if (r.kind === "ok") v = r.value;
@@ -10917,7 +11857,7 @@ function jv(j, fallback, lines) {
 function loadTasks(st) {
   if (st.tasksLoaded) return;
   st.tasksLoaded = true;
-  const path = join40(st.gov, "tasks.json");
+  const path = join45(st.gov, "tasks.json");
   const r = readJournal(path);
   if (r.kind === "absent") return;
   if (r.kind === "unreadable") {
@@ -10939,12 +11879,12 @@ function loadTasks(st) {
   }
 }
 function tasksFilePresent(st) {
-  return existsSync17(join40(st.gov, "tasks.json"));
+  return existsSync17(join45(st.gov, "tasks.json"));
 }
 function loadDesign(st) {
   if (st.designLoaded) return;
   st.designLoaded = true;
-  const path = join40(st.gov, "design.json");
+  const path = join45(st.gov, "design.json");
   const r = readJournal(path);
   if (r.kind === "absent") return;
   if (r.kind === "unreadable") {
@@ -11217,7 +12157,7 @@ var MODULE18 = {
 };
 
 // src/nouns/story.ts
-import { join as join41 } from "node:path";
+import { join as join46 } from "node:path";
 var VERBS_TSV19 = "new	the only verb\n";
 var USAGE14 = NOUN_USAGE["story"] ?? "";
 var DESIGN_SEED3 = '{"entries": []}';
@@ -11257,7 +12197,7 @@ function storyNew(cli, ctx, io, args) {
   if (f.criteria.length === 0) {
     cli.die('story: at least one --criterion is required (acceptance_criteria, minItems 1) \u2014 each one an observable check a person could confirm or deny by looking at the running thing or its record: a shape returned, a refusal given, a record written, a command exiting a stated code. One behaviour per criterion; a criterion with "and" in it is usually two. GOOD "scrumux accept T-XXXX --authority refuses a red or missing receipt and is write-once" (S-0069). GOOD "harness verify executes every registered surface" (S-0070). GOOD "cold probes of the standalone and app lanes pass with task-verify under 15s and close under 10s" (S-0070). BAD "acceptance is reliable" \u2014 an adjective, not a check.');
   }
-  const design = join41(ctx.gov, "design.json");
+  const design = join46(ctx.gov, "design.json");
   refusing(cli, () => ensureFile(design, DESIGN_SEED3));
   if (!refExists(design, f.feature, (r) => field(r, "kind") === "feature" ? field(r, "id") : void 0)) {
     cli.die(`story: feature ${f.feature} not found \u2014 add it first: scrumux feature new --name ... --desc ...`);
@@ -11306,15 +12246,15 @@ var MODULE19 = {
 };
 
 // src/nouns/task.ts
-import { join as join49 } from "node:path";
+import { join as join54 } from "node:path";
 
 // src/nouns/task/accept-extras.ts
-import { join as join45 } from "node:path";
+import { join as join50 } from "node:path";
 
 // src/nouns/task/shared.ts
-import { existsSync as existsSync18, readFileSync as readFileSync31 } from "node:fs";
-import { spawnSync as spawnSync11 } from "node:child_process";
-import { join as join42 } from "node:path";
+import { existsSync as existsSync18, readFileSync as readFileSync36 } from "node:fs";
+import { spawnSync as spawnSync12 } from "node:child_process";
+import { join as join47 } from "node:path";
 function jqRaw3(v) {
   if (v === void 0 || v === null) return "null";
   if (typeof v === "string") return v;
@@ -11338,7 +12278,7 @@ function arr3(v) {
 function rows4(path) {
   if (!existsSync18(path)) return [];
   try {
-    const doc = parsePreservingNumbers(readFileSync31(path, "utf8"));
+    const doc = parsePreservingNumbers(readFileSync36(path, "utf8"));
     const o = obj5(doc);
     if (o === null) return [];
     return arr3(o["entries"]);
@@ -11353,8 +12293,8 @@ function rowById3(path, id) {
   }
   return null;
 }
-var tasksPath2 = (ctx) => join42(ctx.gov, "tasks.json");
-var sprintsPath2 = (ctx) => join42(ctx.gov, "sprints.json");
+var tasksPath2 = (ctx) => join47(ctx.gov, "tasks.json");
+var sprintsPath2 = (ctx) => join47(ctx.gov, "sprints.json");
 function directOut(io) {
   return (line) => io.out(line + "\n");
 }
@@ -11365,10 +12305,10 @@ function tailOfCapture(captured, n) {
   return stripTrailingNewlines3(captured).split("\n").slice(-n);
 }
 function cliPath(ctx) {
-  return join42(ctx.scriptsDir, "scrumux");
+  return join47(ctx.scriptsDir, "scrumux");
 }
 function runScrumux(ctx, args) {
-  const r = spawnSync11(process.execPath, [cliPath(ctx), ...args], {
+  const r = spawnSync12(process.execPath, [cliPath(ctx), ...args], {
     cwd: ctx.cwd,
     env: ctx.env,
     encoding: "utf8"
@@ -11400,21 +12340,21 @@ function bearingRecordLines(bearing2) {
 }
 
 // src/nouns/task/verify.ts
-import { existsSync as existsSync19, mkdirSync as mkdirSync8, rmdirSync as rmdirSync2 } from "node:fs";
-import { join as join44 } from "node:path";
+import { existsSync as existsSync19, mkdirSync as mkdirSync10, rmdirSync as rmdirSync2 } from "node:fs";
+import { join as join49 } from "node:path";
 
 // src/nouns/task/evidence.ts
-import { mkdirSync as mkdirSync7, writeFileSync as writeFileSync10 } from "node:fs";
-import { join as join43 } from "node:path";
+import { mkdirSync as mkdirSync9, writeFileSync as writeFileSync13 } from "node:fs";
+import { join as join48 } from "node:path";
 var EVIDENCE_DIR = ".evidence";
 var EVIDENCE_LINES = 40;
 var LINE_CAP = 400;
-var evidencePath = (gov, tid, kind) => join43(gov, EVIDENCE_DIR, `${tid}.${kind}.txt`);
+var evidencePath = (gov, tid, kind) => join48(gov, EVIDENCE_DIR, `${tid}.${kind}.txt`);
 function writeEvidence(gov, tid, kind, run, output) {
   try {
-    const dir = join43(gov, EVIDENCE_DIR);
-    mkdirSync7(dir, { recursive: true });
-    writeFileSync10(join43(dir, ".gitignore"), "*\n");
+    const dir = join48(gov, EVIDENCE_DIR);
+    mkdirSync9(dir, { recursive: true });
+    writeFileSync13(join48(dir, ".gitignore"), "*\n");
     const lines = output.replace(/\n+$/, "").split("\n").slice(-EVIDENCE_LINES).map((l) => l.length > LINE_CAP ? `${l.slice(0, LINE_CAP)}\u2026` : l);
     const head = [
       `# scrumux task verify evidence (${kind}) \u2014 ${tid}`,
@@ -11424,7 +12364,7 @@ function writeEvidence(gov, tid, kind, run, output) {
       `# at_epoch: ${run.atEpoch}`,
       `# output (last ${EVIDENCE_LINES} lines of the verification command):`
     ];
-    writeFileSync10(evidencePath(gov, tid, kind), `${[...head, ...lines].join("\n")}
+    writeFileSync13(evidencePath(gov, tid, kind), `${[...head, ...lines].join("\n")}
 `);
   } catch {
   }
@@ -11435,7 +12375,7 @@ var VERIFY_TIMEOUT_SECONDS = 600;
 function taskVerify(cli, ctx, ictx, args) {
   const io = ictx.io;
   const tasks = tasksPath2(ctx);
-  const health = join44(ctx.gov, "repo-health.json");
+  const health = join49(ctx.gov, "repo-health.json");
   const tid = args[0] ?? "";
   if (tid === "") cli.dieUsage("usage: scrumux task verify T-0001");
   if (!existsSync19(tasks)) cli.die("no governance/tasks.json");
@@ -11569,9 +12509,9 @@ function printTailOfFile(io, content, n) {
   }
 }
 function writeReceipt(cli, ctx, tid, vc, rc, checksRun, checksFailed, io, output = "", covered = []) {
-  const probe = join44(ctx.gov, `.receipt-probe.${process.pid}`);
+  const probe = join49(ctx.gov, `.receipt-probe.${process.pid}`);
   try {
-    mkdirSync8(probe);
+    mkdirSync10(probe);
   } catch {
     io.err(`task verify: could not record the receipt on ${tid} \u2014 governance/ is not writable (read-only agent sandbox?). The verdict above stands; re-run outside the sandbox to leave a receipt for scrumux task accept.
 `);
@@ -11650,7 +12590,7 @@ function acceptedFingerprint(ctx, command) {
 function issueTell(cli, ctx, task, tid) {
   const iid = task === null || typeof task["issue"] !== "string" ? "" : task["issue"];
   if (iid === "") return;
-  const row = rows4(join45(ctx.gov, "issues.json")).map((r) => obj5(r)).find((o) => o !== null && o["id"] === iid) ?? null;
+  const row = rows4(join50(ctx.gov, "issues.json")).map((r) => obj5(r)).find((o) => o !== null && o["id"] === iid) ?? null;
   const status = row === null ? "unknown" : rawOr(row["status"], "unknown");
   cli.data({ issue: iid, issue_status: status });
   if (status === "resolved" || status === "rejected") return;
@@ -11659,7 +12599,7 @@ function issueTell(cli, ctx, task, tid) {
 
 // src/nouns/task/lint.ts
 import { existsSync as existsSync21 } from "node:fs";
-import { join as join47 } from "node:path";
+import { join as join52 } from "node:path";
 
 // src/nouns/task/reader.ts
 var HOLLOW_GREENS = [
@@ -11676,7 +12616,7 @@ function readerQuestion(verificationCommand, failsWhen) {
 
 // src/nouns/task/scope-paths.ts
 import { existsSync as existsSync20 } from "node:fs";
-import { isAbsolute as isAbsolute3, join as join46 } from "node:path";
+import { isAbsolute as isAbsolute4, join as join51 } from "node:path";
 var URL_SPAN = /\b[A-Za-z][A-Za-z0-9+.-]*:\/\/\S*/g;
 var HOST_PORT_SPAN = /\b[A-Za-z0-9][A-Za-z0-9.-]*:[0-9]{2,5}(?:\/\S*)?/g;
 var KNOWN_SUFFIX = /\.(py|sh|json|md|MD)$/;
@@ -11688,7 +12628,7 @@ function isFileShaped(tok, workRoot) {
   if (tok.startsWith("//")) return false;
   if (ENV_PREFIX.test(tok)) return false;
   if (HAS_EXTENSION.test(tok)) return true;
-  const onDisk = isAbsolute3(tok) ? tok : join46(workRoot, tok);
+  const onDisk = isAbsolute4(tok) ? tok : join51(workRoot, tok);
   return existsSync20(onDisk);
 }
 function unlistedScopePaths(scopeText, listed, workRoot, workDirs = []) {
@@ -11836,7 +12776,7 @@ function taskLint(cli, ctx, _ictx, args) {
     } else {
       const changed = bearingChangedPaths(bearing2);
       const nref = refs.length;
-      const ndec = rows4(join47(ctx.gov, "decisions.json")).length;
+      const ndec = rows4(join52(ctx.gov, "decisions.json")).length;
       if (changed !== "" && nref === 0 && ndec === 0) {
         tell(`this order CHANGES ${changed} and cites no governance refs, and this repo has recorded no decisions yet \u2014 so there is nothing to cite and nothing to fix here. Cite one when one exists (D-0005)`);
       } else if (changed !== "" && nref === 0) {
@@ -11869,8 +12809,8 @@ function taskLint(cli, ctx, _ictx, args) {
 }
 
 // src/nouns/task/brief.ts
-import { existsSync as existsSync22, readFileSync as readFileSync32 } from "node:fs";
-import { join as join48 } from "node:path";
+import { existsSync as existsSync22, readFileSync as readFileSync37 } from "node:fs";
+import { join as join53 } from "node:path";
 
 // src/nouns/task/brief-notes.ts
 function mustFailWhenLine(failsWhen) {
@@ -12071,20 +13011,20 @@ OUT (do not touch):`];
           break;
         }
         cli.say(`  ${f}`);
-        for (const rel of ["callers", "callees"]) {
-          const r = runScrumux(ctx, ["graph", "code", rel, f]);
+        for (const rel2 of ["callers", "callees"]) {
+          const r = runScrumux(ctx, ["graph", "code", rel2, f]);
           if (r.stderr !== "") ictx.io.err(r.stderr);
           if (r.rc !== 0) {
             const head1 = stripTrailingNewlines3(r.stdout + r.stderr).split("\n")[0] ?? "";
-            cli.say(`    ${rel}: UNAVAILABLE \u2014 ${head1}. Nothing was traced for this file. Rebuild: .claude/scripts/scrumux graph code build`);
+            cli.say(`    ${rel2}: UNAVAILABLE \u2014 ${head1}. Nothing was traced for this file. Rebuild: .claude/scripts/scrumux graph code build`);
             continue;
           }
           const lines = stripTrailingNewlines3(r.stdout).split("\n").filter((l) => !l.startsWith("graph code: rebuilt")).filter((l) => !/^\s*$/.test(l));
           if (lines.length === 0) {
-            cli.say(`    ${rel}: none in the index`);
+            cli.say(`    ${rel2}: none in the index`);
           } else {
-            for (const l of lines.slice(0, 12)) cli.say(`    ${rel}: ${l}`);
-            if (lines.length > 12) cli.say(`    ${rel}: (+${lines.length - 12} more)`);
+            for (const l of lines.slice(0, 12)) cli.say(`    ${rel2}: ${l}`);
+            if (lines.length > 12) cli.say(`    ${rel2}: (+${lines.length - 12} more)`);
           }
         }
       }
@@ -12124,7 +13064,7 @@ OUT (do not touch):`];
   for (const n of WORKING_NOTES) out(`  - ${n}`);
   cli.say("");
   cli.say(`--- History for ${tid} ---`);
-  historyBlock(out, join48(ctx.gov, "log.json"), tid);
+  historyBlock(out, join53(ctx.gov, "log.json"), tid);
   cli.say("");
   if (gateFail === 1) {
     cli.emit("VERDICT: gates FAILED \u2014 fix the named items before implementing. Do not start.");
@@ -12149,7 +13089,7 @@ function historyBlock(out, logPath, tid) {
   }
   let doc;
   try {
-    doc = parsePreservingNumbers(readFileSync32(logPath, "utf8"));
+    doc = parsePreservingNumbers(readFileSync37(logPath, "utf8"));
   } catch {
     return;
   }
@@ -12237,7 +13177,7 @@ function taskNew(cli, ctx, ictx, args) {
     cli.die('task new: --check is required (the acceptance check, stated BEFORE work starts) \u2014 a command-verifiable sentence naming what must be observably true AND the suite that shows it. GOOD (build) "graph gov build succeeds on a GOV_ROOT whose governance directory does not exist yet, and tests/graph-cli-tests.sh exits 0" (T-0213). GOOD (defect) "A tree containing __pycache__ or .pyc files closes session-check exit 0 when everything else traces to a worked task, an unauthorised source file still FAILs by name, and tests/session-check-tests.sh exits 0" (T-0217). GOOD (governance) "No rule or skill in the deploy payload instructs an agent to create harness work, and tests/deployed-surface-tests.sh asserts it against the payload roster, exiting 0" (T-0214). BAD "works", "tests pass", "the fix is applied" \u2014 none of them names what would have to be false for the check to fail.');
   }
   if (fromIssue !== "") {
-    const issuesPath3 = join49(ctx.gov, "issues.json");
+    const issuesPath3 = join54(ctx.gov, "issues.json");
     if (!refExists(issuesPath3, fromIssue)) {
       cli.die(`task new: issue ${fromIssue} not found in issues.json`);
     }
@@ -12290,7 +13230,7 @@ function taskNew(cli, ctx, ictx, args) {
   return emitted(cli, r.id);
 }
 function designPathOf(ctx) {
-  return join49(ctx.gov, "design.json");
+  return join54(ctx.gov, "design.json");
 }
 function kindPick(kind) {
   return (r) => {
@@ -12883,8 +13823,8 @@ function orderLoss(prior, next) {
 }
 
 // src/nouns/views-render.ts
-import { existsSync as existsSync23, mkdirSync as mkdirSync9, readFileSync as readFileSync33, writeFileSync as writeFileSync11 } from "node:fs";
-import { join as join50 } from "node:path";
+import { existsSync as existsSync23, mkdirSync as mkdirSync11, readFileSync as readFileSync38, writeFileSync as writeFileSync14 } from "node:fs";
+import { join as join55 } from "node:path";
 var AI_LOG_HEADER = "# AI_LOG.MD\n<!-- GENERATED VIEW \u2014 source of truth: governance/log.json (append-only).\n     Do not edit by hand; run: .claude/scripts/scrumux views render -->\n\n";
 var DECISIONS_HEADER = "# DECISIONS.MD\n<!-- GENERATED VIEW \u2014 source of truth: governance/decisions.json (append-only).\n     Do not edit by hand; run: .claude/scripts/scrumux views render -->\n\n";
 var BACKLOG_HEADER = "# BACKLOG.MD\n<!-- GENERATED VIEW \u2014 sources of truth: governance/tasks.json, governance/sprints.json.\n     Do not edit by hand; run: .claude/scripts/scrumux views render -->\n\n";
@@ -12900,7 +13840,7 @@ var STATUSES4 = [
 function readForRender(path) {
   if (!existsSync23(path)) return null;
   try {
-    return parsePreservingNumbers(readFileSync33(path, "utf8"));
+    return parsePreservingNumbers(readFileSync38(path, "utf8"));
   } catch {
     return null;
   }
@@ -13032,20 +13972,20 @@ function renderBacklog(tasks, sprints) {
 function renderViews(ctx) {
   const warnings = [];
   const written = [];
-  const logPath = join50(ctx.gov, "log.json");
+  const logPath = join55(ctx.gov, "log.json");
   if (existsSync23(logPath)) {
-    writeFileSync11(join50(ctx.root, "AI_LOG.MD"), renderAiLog(readForRender(logPath)));
+    writeFileSync14(join55(ctx.root, "AI_LOG.MD"), renderAiLog(readForRender(logPath)));
     written.push("AI_LOG.MD");
   }
-  const decPath = join50(ctx.gov, "decisions.json");
+  const decPath = join55(ctx.gov, "decisions.json");
   if (existsSync23(decPath)) {
-    writeFileSync11(join50(ctx.root, "DECISIONS.MD"), renderDecisions(readForRender(decPath)));
+    writeFileSync14(join55(ctx.root, "DECISIONS.MD"), renderDecisions(readForRender(decPath)));
     written.push("DECISIONS.MD");
   }
-  const tasksPath3 = join50(ctx.gov, "tasks.json");
-  const sprintsPath3 = join50(ctx.gov, "sprints.json");
-  writeFileSync11(
-    join50(ctx.root, "BACKLOG.MD"),
+  const tasksPath3 = join55(ctx.gov, "tasks.json");
+  const sprintsPath3 = join55(ctx.gov, "sprints.json");
+  writeFileSync14(
+    join55(ctx.root, "BACKLOG.MD"),
     renderBacklog(
       existsSync23(tasksPath3) ? readForRender(tasksPath3) : null,
       existsSync23(sprintsPath3) ? readForRender(sprintsPath3) : null
@@ -13053,11 +13993,11 @@ function renderViews(ctx) {
   );
   written.push("BACKLOG.MD");
   try {
-    mkdirSync9(ctx.gov, { recursive: true });
+    mkdirSync11(ctx.gov, { recursive: true });
   } catch {
   }
   let graphBuildFailed = false;
-  const cliPath2 = join50(ctx.scriptsDir, "scrumux");
+  const cliPath2 = join55(ctx.scriptsDir, "scrumux");
   if (isExecutable(cliPath2)) {
     try {
       const g = build(ctx.root);

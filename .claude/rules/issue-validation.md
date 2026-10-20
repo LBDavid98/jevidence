@@ -23,7 +23,8 @@ scrumux issue validate I-XXXX --verdict reproduced|evidenced|invalidated|duplica
   evidence is concrete and cited.
 - **invalidated**: the issue does not hold up — close it
   (`scrumux issue update I-XXXX --status rejected`); the recorded disproof
-  is the deliverable (D-0011 data), not a fix.
+  is the deliverable, not a fix — it stops the next session chasing the
+  same claim.
 - **duplicate**: same root cause already reported or owned — record
   `--duplicate-of` naming the original issue (I-XXXX) or the backlog
   task that owns the fix (T-XXXX, preferred when one exists); any new

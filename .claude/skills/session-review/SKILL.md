@@ -1,19 +1,19 @@
 ---
 name: session-review
-description: Closes a working session in this harness - session-check renders the verdict on the session's governance and code health, then work is committed locally and User is asked before any push. Use at the end of every session, before handing back to User, or when User asks whether the session is clean.
+description: Closes a working session in this harness - session-check renders the verdict on the session's governance and code health, then work is committed locally; a push happens only on User's word. Use at the end of every session, before handing back to User, or when User asks whether the session is clean.
 ---
 
 # Session review
 
 The verdict is a script's exit code, not your impression of
-the session (boundary 5). A session that skips this isn't closed.
+the session. A session that skips this isn't closed.
 
 ```
 Session Close Progress:
 - [ ] 1. Capture what only you can capture
 - [ ] 2. session-check — loop until exit 0
 - [ ] 3. Commit locally, structured message
-- [ ] 4. Report to User; ask about push
+- [ ] 4. Report to User; push only on their word
 ```
 
 **Step 1 — the one non-mechanical item.** Anything decided this session
@@ -26,8 +26,7 @@ message is not a ratification: record it without `--authority`. It lands
 **proposed** and User ratifies, rejects or acknowledges it in the app.
 
 A decision is read by the session that is about to undo it, so it carries
-the ruling AND what was weighed against it. One real entry, abridged
-(D-0084):
+the ruling AND what was weighed against it. One real entry, abridged:
 
 ```
 .claude/scripts/scrumux decide new --by "<you>" \
@@ -54,7 +53,7 @@ second), `issue list` for the open ones, `log show L-XXXX` or `log show
 Do **not** sweep the session for things to file. If something broke while
 you worked, you filed it then (`--type defect`); if nothing broke, there
 is nothing to capture. An end-of-session hunt for imperfections produces
-records nobody acts on (D-0079).
+records nobody acts on.
 
 **Step 2 — run exactly:**
 
@@ -65,7 +64,7 @@ records nobody acts on (D-0079).
 Five things decide the close:
 
 1. **Order** — every task worked this session sits in a ratified sprint
-   (D-0004), or carries a recorded waiver.
+   or carries a recorded waiver.
 2. **Receipt** — no silent finishes: every in_review or accepted task
    has its log entry, and statuses match what actually happened.
 3. **Scope** — every changed file traces to a worked task's order.
@@ -88,21 +87,28 @@ it to finish or stop it, and remove your `.scratch/` files.
 **Step 3 — commit locally, always:**
 
 ```
-git add -A && git status --short   # review what's staged — no secrets, no strays
+git add -A && git status --short   # review what's staged — no secrets, no strays, nothing another agent left
 git commit -m "<sprint id>: <task ids>: <one line>"
 ```
 
 The one line follows the same rule as a task title: what is now true, not
-what you touched. Real subjects from this repo's history —
+what you touched. Real subjects from the harness's own history —
 `"The prune stopped eating the two files deploy promises never to
 overwrite"`, `"A wall stops recording a sub-agent's refusal as the
-session's own (I-0154)"`. Not `"fixes"`, not `"updates to session-check"`.
+session's own"`. Not `"fixes"`, not `"updates to session-check"`.
 
-**Step 4 — report and ask.** Tell User: tasks moved to
-in_review and awaiting their acceptance, decisions recorded, issues raised,
-the check's WARNs, the commit hash. Then **ask whether to push — never push
-unprompted** (boundary 2). Their word is the event; you run `git push`
-when they give it.
+**Step 4 — report.** Tell User: tasks moved to in_review and awaiting
+their acceptance, decisions recorded, issues raised, the check's WARNs,
+the commit hash, and that it is committed locally and not pushed.
+
+**Push is User's decision.** When they say push — in this session, or by
+invoking a skill whose job is pushing — run `git push` and record their
+word with it: who said push and when, in your report and in the task's
+log entry. Never push on your own initiative, never with `--no-verify`,
+never with force; a hook that refuses the push is a stop, and the
+**owner-reserved-changes** rule says what to do with it. If this repo's
+push deploys, `.claude/rules/project-standards.md` says so — read it
+first, and say so when you report the push.
 
 A failed check reported plainly beats a green lie. If something can't be
 fixed this session it is a `scrumux issue new` with a severity, said out loud in

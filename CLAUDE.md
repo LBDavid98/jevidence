@@ -20,6 +20,8 @@ decide anything.
 3. **Check your standards file.** `.claude/rules/project-standards.md`
    is this repo's own — yours to write, never overwritten by an update.
    What previous sessions learned the hard way is in there.
+4. **Read the owner's feedback.** If `docs/feedback/` exists it holds the
+   owner's own words; read the newest before planning.
 
 ## The loop
 
@@ -46,12 +48,23 @@ without doing the work, so the record says what it actually knows.
 
 ## Authority
 
-**Ratify, accept, rule and decide are User's alone** — the four
-irreversible acts — and so is push. A delegate may take one where a
+User is the repo's owner. **Ratify, accept, rule and decide are User's
+alone** — the four irreversible acts. A delegate may take one where a
 ratified decision names the delegation (`--authority standing:D-XXXX`).
 Never run `scrumux sprint ratify`, `scrumux task accept` / `task reject`,
 `scrumux decide ratify` / `reject` / `acknowledge` or `scrumux exception
-ratify` on your own initiative. Push is never delegated.
+ratify` on your own initiative.
+
+**Push is User's decision.** When they say push — in this session, or by
+invoking a skill whose job is pushing — run it, and record their word
+with it: who said push, and when, in your report and in the task's log
+entry. Never push on your own initiative, never with `--no-verify`, never
+with force. A repo whose push deploys says so in
+`.claude/rules/project-standards.md`; read it before you push there.
+
+A repo's own hooks, branch layout, formatter and linter configuration
+and its history change only in a joint review with User — see
+`.claude/rules/owner-reserved-changes.md`.
 
 You may RECORD a decision (`scrumux decide new`) or a resolution
 (`scrumux exception resolve`). Without an `--authority` you actually hold,

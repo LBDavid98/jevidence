@@ -26,7 +26,7 @@ scrumux issue new --type harness --source <you> --summary "<what it does wrong>"
   Clone it anywhere, fix it, `scrumux harness deploy <this repo>`; the clone is
   then disposable.
 - **A denied call is a stop, not an obstacle.** Surface it and wait;
-  never re-route the same change through another tool (I-0121).
+  never re-route the same change through another tool.
 - **So is a Claude Code permission or trust denial.** Never retry with
   `dangerouslyDisableSandbox`; record the command and the exact denial text
   as a `harness` issue and set the task `blocked` with that reason — the
@@ -34,7 +34,7 @@ scrumux issue new --type harness --source <you> --summary "<what it does wrong>"
 
 `.claude/rules/` and `.claude/skills/` are NOT blocked — a repo localises
 there. Their drift is reported by `scrumux harness verify` to whoever owns the
-harness, never to you (boundary 7).
+harness, never to you.
 
 The wall that refuses it: `.claude/dist/block-upstream-edit.mjs`, on the
-edit tools and Bash alike (D-0078).
+edit tools and Bash alike.

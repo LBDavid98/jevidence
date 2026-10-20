@@ -9,9 +9,22 @@ scripts: []
 Scope: whenever work runs alongside other work in this repo — a second
 agent, a background task, an experiment you want to keep separable.
 
-- **One working tree per line of work.** `git worktree add ../<repo>-<what> <branch>`.
-  Two agents editing one tree produce a diff neither of them authored and
-  a receipt that covers work nobody reviewed.
+- **One working tree per line of work.** Two agents editing one tree
+  produce a diff neither of them authored and a receipt that covers work
+  nobody reviewed.
+  - On the Cascadia box, the box's tool makes it:
+    `cascadia-work <app> <branch>` creates `/srv/apps/<app>--<branch>`
+    (a website: `/srv/websites/<slug>--<branch>`).
+  - Anywhere else: `git worktree add ../<repo>--<what> <branch>`.
+- **One writer per checkout.** A checkout someone else is writing in is
+  not yours to write in too, whoever started it.
+- **Never touch a `<app>--scrumux-*` checkout.** Those are dispatched
+  sessions' worktrees, with an agent working in them now. Read them if
+  you must; never edit, commit, reset or remove one.
+- **In a checkout that hosted agents, read the staged list before
+  committing.** `git status --short` and `git diff --cached --stat`:
+  another agent may have left work staged there. Commit only what you
+  can account for, and say what you left.
 - **The task that spawned it owns it.** Remove the worktree when the work
   lands or is abandoned: `git worktree remove <path>`. A stale worktree
   is a second repo drifting quietly out of date.

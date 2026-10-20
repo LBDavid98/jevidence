@@ -1,14 +1,13 @@
 ---
 name: session-open
-description: Opens a working session in this harness. A session IS a sprint (D-0073) - open a thin one, fill it with app-packaged orders or with light tasks minted from User's messages, then work begins on their ratification. Use when a session has no ratified sprint, when User asks to start work, or when there is no ratified sprint to work under.
+description: Opens a working session in this harness. A session IS a sprint - open a thin one, fill it with app-packaged orders or with light tasks minted from User's messages, then work begins on their ratification. Use when a session has no ratified sprint, when User asks to start work, or when there is no ratified sprint to work under.
 ---
 
 # Session open
 
-A session is a sprint. You open it and fill it; User ratifies
-(D-0004, boundary 2). There is no planning ceremony here — backlog, ranking
-and triage are the app's surface and User's, never an agent's
-(D-0073).
+A session is a sprint. You open it and fill it; User ratifies.
+There is no planning ceremony here — backlog, ranking and triage are
+the app's surface and User's, never an agent's.
 
 ```
 Session Open Progress:
@@ -41,7 +40,7 @@ verification command, full context pack. You add it:
 `scrumux sprint add` refuses an incomplete order. A refusal is the order
 being wrong, never a thing to override.
 
-*Light lane (standalone, D-0073).* No app: the work arrives as a message
+*Light lane (standalone).* No app: the work arrives as a message
 from User. Turn each discrete piece of it into one task.
 
 ```
@@ -57,14 +56,14 @@ from User. Turn each discrete piece of it into one task.
 
 **Write the values for the session that reads them cold.** This is the
 step where a backlog turns into a wall of ids: eight-word titles, and
-checks vague enough to argue. One real task from this repo, verbatim, as
+checks vague enough to argue. One real task, with its id replaced by a placeholder, as
 the shape to copy:
 
 ```
 .claude/scripts/scrumux task new \
   --title "The close is not blocked by bytecode" \
   --check "A tree containing __pycache__, .pyc, .pytest_cache or .DS_Store files closes session-check exit 0 when everything else traces to a worked task, an unauthorised source file still FAILs by name, and tests/session-check-tests.sh exits 0"
-.claude/scripts/scrumux task order T-0217 --light \
+.claude/scripts/scrumux task order T-XXXX --light \
   --scope "Add build and OS artefacts to session-check's scope exemption at :202, alongside governance/*, *.MD, .claude/* and .gitignore. Reproduced in canon acceptance run 4 — the close FAILed on agents/__pycache__/*.pyc and the agent had to remove them by hand before it could finish." \
   --verify "sh tests/session-check-tests.sh" \
   --out "Any other exemption. Only build and OS artefacts — a file an agent wrote is still a file an order must own" \
@@ -91,8 +90,8 @@ Three tests to apply to your own values:
   so it can be proven in a form the allow-list runs — a test that sets the bad
   value itself, or `bash scripts/<wrapper>` — never as `VAR=bad cmd`, which no
   allow rule matches.
-- **A --file can be a READ** — `--file "governance/log.json | read: L-0004,
-  the export procedure"` or `--ref L-0004`; the brief inlines cited log
+- **A --file can be a READ** — `--file "governance/log.json | read: L-XXXX,
+  the export procedure"` or `--ref L-XXXX`; the brief inlines cited log
   entries. When lint TELLs about a path in the prose, list it; do not delete
   the pointer the next session needs.
 - **A sprint that touches deploy files gets a deployed check.** When the work
@@ -109,7 +108,7 @@ requirements they did not state, and do not ask them to restate them.
 thin reading list as TELLs rather than FAILs, and `sprint add` takes it
 storyless.
 
-**What --light does NOT relax (D-0072 boundary 4):** the acceptance
+**What --light does NOT relax:** the acceptance
 check and the single verification command. Light tasks included. If you
 cannot say what proves it done, the task is not ready — ask them, do not
 mint it.
@@ -128,9 +127,9 @@ reading:
 Feed the answers back in as `--command` entries (so the implementer
 re-runs them against current truth) or as named paths in `--file`, and
 name in `--scope` anything the callers list makes clearly in or out.
-Nothing here consults a model — it is traversal over a cached index
-(D-0001, D-0043). If a query fails, say so in the order rather than
-leaving the gap silent.
+Nothing here consults a model — it is traversal over a cached index.
+If a query fails, say so in the order rather than leaving the gap
+silent.
 
 `scrumux task brief` prints the same two queries for every file the order
 changes, so the implementer gets this again at open. Attaching it here

@@ -32,4 +32,4 @@ under test, a repo whose gateway IS the provider — declares it once in
 the pathway; working around the wall is not.
 
 This repo's own gateway details, model policy and access procedure
-belong in `.claude/rules/project-standards.md`, not here (D-0086).
+belong in `.claude/rules/project-standards.md`, not here.

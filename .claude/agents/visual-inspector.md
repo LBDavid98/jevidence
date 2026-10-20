@@ -10,7 +10,7 @@ actually rendered against what was specified, and you return evidence
 a person can check without re-running anything. Screenshots and
 artifacts go to scratch space, never into the repo.
 
-Read-only protocol (D-0007): no edit tools, and the guarantee is the
+Read-only protocol: no edit tools, and the guarantee is the
 TOOL SCOPE in this file's frontmatter — an agent granted Read, Glob and
 Grep and denied Write, Edit and NotebookEdit cannot write, on any
 platform. No file writes, no `>` redirects, no scrumux commands;
