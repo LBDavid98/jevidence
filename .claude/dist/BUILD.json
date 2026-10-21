@@ -1,14 +1,16 @@
 {
   "built_at": "2026-10-21",
-  "source_commit": "9d824628cfe7fe9c2f44e4cf3026dd032d6fb336",
+  "source_commit": "338e31b34b007555c69418fbfe779d6498222744",
   "source_dirty": false,
   "standard": "2.0.0",
   "files": {
-    ".claude/dist/scrumux.mjs": "13c10fb1783ed77ebed07c291dbd30bd3037c7ccc6329a64bcbe53ba12b5976b",
+    ".claude/dist/scrumux.mjs": "ab45783eebf2a3d1b4741735cd5112444fbb06a0214f03f09d148124fd7e96bb",
     ".claude/dist/block-destructive.mjs": "04f8943c9f8ccdb9a13dfe38bfbb5870c3149b8eddd319ea3adcc1f13203e83a",
     ".claude/dist/block-secret-reads.mjs": "9c0a45c1fa10df55cf89a266864ae472d3ef851ae629558d4f34443843186b2e",
     ".claude/dist/block-upstream-edit.mjs": "adeb1100f1f28f96f9ee02033371c7e33e8b9d7b32a237ebf7268c5c1fe360a2",
     ".claude/dist/block-direct-llm.mjs": "a43d6b08473c5a3a52b5a9a552de490be83b2dc23486ebbc3638cd5c837953cd",
-    ".claude/dist/session-guard.mjs": "f9ad237634afbe11b20d724f709e6b1f0017ecafd4deaceafeb1a82cbdc59a65"
+    ".claude/dist/block-governance-write.mjs": "c20219541864169808785cc93796fb587a42c2ec165373ce2c6fed0b71845eef",
+    ".claude/dist/session-guard.mjs": "67e4bb4e3a044567b7eed55bb301d3f23ecdf4b95573c410c6563a22c4bd9360",
+    ".claude/dist/org-walls.mjs": "2db761c0eb19f111ac31631e35161deb7ae8751a841089e48f753f30b0f774f5"
   }
 }

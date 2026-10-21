@@ -304,7 +304,7 @@ function shebangOf(p) {
 // src/cli/ungoverned.ts
 import { existsSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname, join } from "node:path";
-var UNGOVERNED_ALLOWED_NOUNS = "backlog graph harness records status";
+var UNGOVERNED_ALLOWED_NOUNS = "backlog graph harness org records repo-gov status";
 var ALLOWED = new Set(UNGOVERNED_ALLOWED_NOUNS.split(" "));
 function findMarker(root) {
   let dir = root;
@@ -379,13 +379,13 @@ function main(io = processWallIo()) {
   if (!isFile(tset)) return io.exit(0);
   const old = nodeVersionProblem(process.version);
   if (old !== null) {
-    refuseSession(io, `scrumux: this session is REFUSED \u2014 the four walls in ${root} cannot run. Node ${process.version} is too old (>=22.11 is required), so every wall bundle would fail to start, and Claude Code treats a hook that cannot start as NON-BLOCKING: the tool call proceeds and the wall is silently open. Install a newer Node and reopen the session. Nothing was read or written.`);
+    refuseSession(io, `scrumux: this session is REFUSED \u2014 the walls in ${root} cannot run. Node ${process.version} is too old (>=22.11 is required), so every wall bundle would fail to start, and Claude Code treats a hook that cannot start as NON-BLOCKING: the tool call proceeds and the wall is silently open. Install a newer Node and reopen the session. Nothing was read or written.`);
   }
   let doc;
   try {
     doc = JSON.parse(readFileSync3(tset, "utf8"));
   } catch {
-    refuseSession(io, `scrumux: this session is REFUSED \u2014 ${tset} is not valid JSON, so Claude Code loads NO hooks at all from it and all four walls are absent while the repo looks entirely normal from the inside. Fix the file (jq . ${tset} names the offending line), then reopen the session.`);
+    refuseSession(io, `scrumux: this session is REFUSED \u2014 ${tset} is not valid JSON, so Claude Code loads NO hooks at all from it and every wall is absent while the repo looks entirely normal from the inside. Fix the file (jq . ${tset} names the offending line), then reopen the session.`);
   }
   const missing = missingChains(doc);
   if (missing !== "") {

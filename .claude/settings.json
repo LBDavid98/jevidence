@@ -61,6 +61,13 @@
             "args": [
               "${CLAUDE_PROJECT_DIR}/.claude/dist/block-upstream-edit.mjs"
             ]
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/dist/block-governance-write.mjs"
+            ]
           }
         ]
       },
@@ -84,6 +91,13 @@
             "command": "node",
             "args": [
               "${CLAUDE_PROJECT_DIR}/.claude/dist/block-upstream-edit.mjs"
+            ]
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/dist/block-governance-write.mjs"
             ]
           }
         ]

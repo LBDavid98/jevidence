@@ -11,7 +11,8 @@ hooks: [".claude/dist/block-destructive.mjs", ".claude/dist/block-direct-llm.mjs
 The constitution in CLAUDE.MD is the authority. It names the only walls —
 no destructive command without an attested backup, no secret reads, no
 LLM call outside the gateway, no writes to the machinery in a deployed
-repo, PreToolUse hooks only — and reserves the four irreversible acts,
+repo, no write to governance/ except through the scrumux CLI, PreToolUse
+hooks only — and reserves the four irreversible acts,
 ratify, accept, rule and decide, to User; a push happens on User's word,
 never on an agent's initiative. A decision or an
 exception resolution an agent records without authority is kept as

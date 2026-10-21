@@ -1,9 +1,9 @@
 {
   "source_remote": "https://github.com/LBDavid98/scrumux-cli.git",
-  "source_commit": "9d824628cfe7fe9c2f44e4cf3026dd032d6fb336",
+  "source_commit": "338e31b34b007555c69418fbfe779d6498222744",
   "deployed_at": "2026-10-21",
   "build": {
-    "source_commit": "9d824628cfe7fe9c2f44e4cf3026dd032d6fb336",
+    "source_commit": "338e31b34b007555c69418fbfe779d6498222744",
     "source_dirty": false,
     "standard": "2.0.0"
   },
@@ -13,15 +13,16 @@
     ".claude/agents/finding-validator.md": "abd5bc4fbc22c0a43466afcbb73d295b11315942896d876a9c9c04fa226771d0",
     ".claude/agents/issue-validator.md": "065756848402372238649030ab0fe916b29176846d1d3854da7e91f500806187",
     ".claude/agents/visual-inspector.md": "40cabb03cc4b5d69a3df67155c4c150bbfcfbf6aaa183876e8e75c665e922aea",
-    ".claude/dist/BUILD.json": "63369acde9f156e51c973295a738a495483614daa92c347f9db3df0958c881d0",
+    ".claude/dist/BUILD.json": "25eed97c36906a95f93d767d26ba65033f8b38476ea56af14c722060c4f3332a",
     ".claude/dist/block-destructive.mjs": "04f8943c9f8ccdb9a13dfe38bfbb5870c3149b8eddd319ea3adcc1f13203e83a",
     ".claude/dist/block-direct-llm.mjs": "a43d6b08473c5a3a52b5a9a552de490be83b2dc23486ebbc3638cd5c837953cd",
+    ".claude/dist/block-governance-write.mjs": "c20219541864169808785cc93796fb587a42c2ec165373ce2c6fed0b71845eef",
     ".claude/dist/block-secret-reads.mjs": "9c0a45c1fa10df55cf89a266864ae472d3ef851ae629558d4f34443843186b2e",
     ".claude/dist/block-upstream-edit.mjs": "adeb1100f1f28f96f9ee02033371c7e33e8b9d7b32a237ebf7268c5c1fe360a2",
-    ".claude/dist/scrumux.mjs": "13c10fb1783ed77ebed07c291dbd30bd3037c7ccc6329a64bcbe53ba12b5976b",
-    ".claude/dist/session-guard.mjs": "f9ad237634afbe11b20d724f709e6b1f0017ecafd4deaceafeb1a82cbdc59a65",
+    ".claude/dist/scrumux.mjs": "ab45783eebf2a3d1b4741735cd5112444fbb06a0214f03f09d148124fd7e96bb",
+    ".claude/dist/session-guard.mjs": "67e4bb4e3a044567b7eed55bb301d3f23ecdf4b95573c410c6563a22c4bd9360",
     ".claude/rules/canon-amendments.md": "2a1fe741cfd7458823c7dc86c6539edd2afb6a3724ac5c57faf8914ad9178175",
-    ".claude/rules/enforcement-posture.md": "4b64bcfb5f1e15e5ff8bdcde7badc8da5430d64eba99013bf1bc259f1f523327",
+    ".claude/rules/enforcement-posture.md": "d8bf6cc5b5a6bfe31ed59fd17c1e46685bf748ef8270b1482496edad56bdaa02",
     ".claude/rules/harness-is-upstream.md": "2c6399d4ac48947ae3103c61d0ddf5abc1bcb21cbcf9e3c6ee685617f9749840",
     ".claude/rules/issue-validation.md": "9ccfe599a01304f4c764c2f9e8f8cd1b5dc574bf5165951aa684560f3a9684e3",
     ".claude/rules/minimum-planning-requirements.md": "216c947f672ba40c29159eef5836d0af4a01b32c5825a335411a9621cbc6638b",
@@ -29,7 +30,6 @@
     ".claude/rules/no-direct-llm-calls.md": "272079e9307f284684d21db5aee5343bacd0845a26413e2d1c7c434bbbbf42eb",
     ".claude/rules/owner-reserved-changes.md": "f281bd13f3af48ad581cc4ee06302a52e06e2a29a189432b9cfec99560805141",
     ".claude/rules/parallel-work-isolation.md": "8e9e18b7dde10f8c16c2979f0aa2b1f3049630df2351d921782e2ee124747029",
-    ".claude/rules/server-conventions.md": "f0fe01c23b034a1b17e0f071269d3b1a6d7a4dba6724139093bc95e9de017c8d",
     ".claude/schemas/decision.schema.json": "21ca87125dea700eb84b52366a9c5c5bd31a91ee6f280e7b87bdee6b341700e5",
     ".claude/schemas/design.schema.json": "029412c2cf06dedee6e68c94ba4ca53f72712acacc614e39f632fdace524490d",
     ".claude/schemas/exception.schema.json": "d74f7f44e2be4da4eee94fba153147407aed6a9950077dd3bb28e78dc0b1c0c8",
@@ -43,7 +43,6 @@
     ".claude/skills/implement-sop/SKILL.md": "dc66fc397baf8eb6f7bcc66b3dd3d2c73ff5f2f1f2c48830b3b18c608613fc6a",
     ".claude/skills/session-open/SKILL.md": "d3de402cf5c3e4b68b343e0cb51fb36fad498874e176e670267375689c1f6007",
     ".claude/skills/session-review/SKILL.md": "d4c31436ca99b7d3587dde389277279b6060e56154c0ddd73eaaf064ab99ecec",
-    ".claude/skills/session-start/SKILL.md": "99f3b401ccf1297891c33a410b5f916b0dc2958b0ae9fe52cb6586499629bfed",
-    ".claude/skills/verify-deployed/SKILL.md": "ce97e484df826cc7ca46ec79b459970cfab4865b0da18ee7a6f16aff7bb7d85c"
+    ".claude/skills/session-start/SKILL.md": "99f3b401ccf1297891c33a410b5f916b0dc2958b0ae9fe52cb6586499629bfed"
   }
 }

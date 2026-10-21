@@ -169,7 +169,7 @@ function parsePreservingNumbers(src) {
     const c = src[i];
     if (c === "{") return obj6();
     if (c === "[") return arr4();
-    if (c === '"') return str4();
+    if (c === '"') return str7();
     if (c === "t") return expect("true", true);
     if (c === "f") return expect("false", false);
     if (c === "n") return expect("null", null);
@@ -193,7 +193,7 @@ function parsePreservingNumbers(src) {
     for (; ; ) {
       ws();
       if (src[i] !== '"') err("expected key");
-      const k2 = str4();
+      const k2 = str7();
       ws();
       if (src[i] !== ":") err("expected :");
       i++;
@@ -232,7 +232,7 @@ function parsePreservingNumbers(src) {
       err("expected , or ]");
     }
   }
-  function str4() {
+  function str7() {
     i++;
     let out = "";
     for (; ; ) {
@@ -868,6 +868,76 @@ Append-only: nothing already in the file is ever rewritten. A file that
 EXISTS and is empty has lost its header and is refused rather than
 recreated \u2014 restore it from git, or delete it and run this again.
 `,
+  org: `scrumux org \u2014 the organization layer: one organization's rules, skills, agents,
+walls and allow-list, held as DATA in a store and deployed by copy across its fleet.
+
+  scrumux org show    --org ORG [--draft | --version V] [--json]
+  scrumux org show    <repo> [--json]
+  scrumux org history --org ORG [--json]
+  scrumux org diff    <repo> --org ORG [--version V] [--json]
+  scrumux org verify  <repo> [--org ORG] [--json]
+  scrumux org propose <repo> <item> --file F --why W --by WHO [--json]
+  scrumux org draft   --org ORG <item> --from F --by WHO [--why W] [--json]
+  scrumux org publish --org ORG --by WHO --authority direct|app:<session>|standing:D-XXXX [--note N]
+  scrumux org accept  <repo> <item> --reason R --by WHO --authority direct|app:<session>|standing:D-XXXX
+  scrumux org detach  <repo> [--json]
+
+The store is $SCRUMUX_ORG_ROOT/<org>/ (default ~/server/data/scrumux/org):
+draft/ is the working copy, published/<version>/ is immutable, CURRENT names
+the version a deploy installs, history.jsonl says who changed what. Nothing
+in it is an instruction to a session: every deployable file carries the
+.payload suffix under pack/ and is written to its live name only by
+scrumux harness deploy <repo> --org ORG, inside that repo.
+
+An item is <kind>:<id> \u2014 rule:box-tooling, skill:screenshot,
+agent:tooling-scout, wall:no-env-dumps \u2014 or allow.
+
+publish is a PERSON's act and is refused without an authority, like ratify.
+It refuses a wall missing incident, who_is_stopped or sanctioned_path (every
+wall answers "who is being stopped?" before it ships), a pattern that will
+not compile, a file that is not there, and a file at a name an agent tool
+would auto-load. A version already published with different bytes is never
+rewritten: bump the version.
+
+accept is the escape hatch, per repo, with a written reason: the org wall
+named stops firing there, and org verify and the app show the deviation.
+
+propose is an agent's: recorded in the store's proposals/, binds nothing.
+
+detach removes an installed layer from a repo \u2014 its files, hook entries, allow
+rules and manifest claims \u2014 leaving the base deploy byte for byte what a
+no-org deploy writes. governance/org.json (acceptances) is kept as a record.
+`,
+  "repo-gov": `scrumux repo-gov \u2014 repo-level governance (D-S078): one addendum the repo owns
+at the END of its deployed CLAUDE.md, below the harness and the organization
+tiers, published from governance/repo-governance.json.
+
+  scrumux repo-gov show    <repo> [--json]
+  scrumux repo-gov diff    <repo> [--file F] [--json]
+  scrumux repo-gov verify  <repo> [--json]
+  scrumux repo-gov propose <repo> --file F --why W --by WHO [--json]
+  scrumux repo-gov publish <repo> --file F --by WHO --authority direct|app:<session>|standing:D-XXXX [--note N]
+  scrumux repo-gov accept  <repo> RP-NNNN --by WHO --authority direct|app:<session>|standing:D-XXXX [--note N]
+  scrumux repo-gov reject  <repo> RP-NNNN --reason R --by WHO --authority direct|app:<session>|standing:D-XXXX
+  scrumux repo-gov remove  <repo> --by WHO --authority direct|app:<session>|standing:D-XXXX [--note N]
+
+The addendum sits between <!-- scrumux:repo-governance begin --> and
+<!-- scrumux:repo-governance end --> at the end of CLAUDE.md. harness deploy
+keeps it byte for byte and records it in .claude/DEPLOYED as repo-owned;
+a hand edit outside these verbs is variance, reported by verify, never a
+failure. .claude/rules/project-standards.md stays the repo's free-form
+context; the addendum is its governed, versioned statement.
+
+publish and accept are a PERSON's acts, refused without an authority like
+ratify, and refused when the text names a base wall, an organization wall
+the repo carries, or the machinery they live in: the repo tier adds rules
+for its own repo and never loosens a wall. A deviation from an organization
+item is recorded with scrumux org accept, with a reason.
+
+propose is an agent's: recorded as RP-NNNN, binds nothing until a person
+accepts or rejects it. remove withdraws the addendum (RR-NNNN): CLAUDE.md
+ends as the deploy wrote it and the journal keeps every version.
+`,
   rank: `scrumux rank \u2014 backlog priority. A rank means someone DECIDED this
 priority; an absent rank is not a low priority, it is no decision.
 
@@ -1117,9 +1187,11 @@ var NOUN_SUMMARY = [
   ["issue", "defects, drift, harness problems and ideas"],
   ["log", "the append-only work log"],
   ["memory", "a read-only agent's memory block"],
+  ["org", "the organization layer: an org's rules, skills, agents, walls and allow-list"],
   ["rank", "backlog priority"],
   ["records", "the repo validator: journal schemas, refs, rule chains, rosters"],
   ["repair", "a bounded correction with no other scrumux path"],
+  ["repo-gov", "repo-level governance: the addendum at the end of this repo's CLAUDE.md"],
   ["secret", "credentials for this repo's own code, stored never printed"],
   ["session", "the session close"],
   ["sprint", "sprints"],
@@ -1166,7 +1238,7 @@ ${TAIL}`;
 // src/cli/ungoverned.ts
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-var UNGOVERNED_ALLOWED_NOUNS = "backlog graph harness records status";
+var UNGOVERNED_ALLOWED_NOUNS = "backlog graph harness org records repo-gov status";
 var ALLOWED = new Set(UNGOVERNED_ALLOWED_NOUNS.split(" "));
 var HELPISH = /* @__PURE__ */ new Set(["help", "-h", "--help"]);
 function findMarker(root) {
@@ -1832,7 +1904,12 @@ var SEALED_JOURNALS = [
   "issues.json",
   "exceptions.json",
   "log.json",
-  "repo-health.json"
+  "repo-health.json",
+  // The organization and repo tiers' records (2026-10-21): written only through
+  // the CLI, so a hand edit is tampering. Last, so the map's bytes for a repo
+  // without them are what they always were.
+  "org.json",
+  "repo-governance.json"
 ];
 function sealOf(path) {
   return createHash("sha256").update(readFileSync4(path)).digest("hex");
@@ -5634,23 +5711,23 @@ var MODULE6 = {
 };
 
 // src/nouns/harness.ts
-import { accessSync as accessSync2, constants as constants2, statSync as statSync11 } from "node:fs";
-import { resolve as resolve4 } from "node:path";
+import { accessSync as accessSync2, constants as constants2, statSync as statSync13 } from "node:fs";
+import { resolve as resolve5 } from "node:path";
 
 // src/nouns/harness/deploy.ts
 import {
-  chmodSync as chmodSync5,
-  copyFileSync as copyFileSync2,
-  mkdirSync as mkdirSync6,
-  readFileSync as readFileSync19,
-  statSync as statSync10,
+  chmodSync as chmodSync7,
+  copyFileSync as copyFileSync3,
+  mkdirSync as mkdirSync8,
+  readFileSync as readFileSync24,
+  statSync as statSync12,
   unlinkSync,
-  utimesSync as utimesSync2,
-  writeFileSync as writeFileSync9,
-  appendFileSync
+  utimesSync as utimesSync3,
+  writeFileSync as writeFileSync12,
+  appendFileSync as appendFileSync2
 } from "node:fs";
 import { spawnSync as spawnSync7 } from "node:child_process";
-import { dirname as dirname9, join as join25 } from "node:path";
+import { dirname as dirname10, join as join28 } from "node:path";
 
 // src/nouns/harness/payload.ts
 import { opendirSync, readFileSync as readFileSync12 } from "node:fs";
@@ -5694,9 +5771,11 @@ var SURFACE_PROBES = [
   { name: "issue", argv: ".claude/scripts/scrumux issue help", refusal: "" },
   { name: "log", argv: ".claude/scripts/scrumux log help", refusal: "" },
   { name: "memory", argv: ".claude/scripts/scrumux memory help", refusal: "" },
+  { name: "org", argv: ".claude/scripts/scrumux org help", refusal: "" },
   { name: "rank", argv: ".claude/scripts/scrumux rank help", refusal: "" },
   { name: "records", argv: ".claude/scripts/scrumux records help", refusal: "" },
   { name: "repair", argv: ".claude/scripts/scrumux repair help", refusal: "" },
+  { name: "repo-gov", argv: ".claude/scripts/scrumux repo-gov help", refusal: "" },
   { name: "secret", argv: ".claude/scripts/scrumux secret list", refusal: "" },
   { name: "session", argv: ".claude/scripts/scrumux session help", refusal: "" },
   { name: "sprint", argv: ".claude/scripts/scrumux sprint help", refusal: "" },
@@ -5989,7 +6068,7 @@ function buildStamp(srcClaude) {
     standard: typeof b.standard === "string" ? b.standard : null
   };
 }
-function writeManifest(h, payloadList) {
+function writeManifest(h, payloadList, org = null) {
   const srcManifest = join19(h.srcRoot, ".claude/DEPLOYED");
   let remote = "";
   let commit = "";
@@ -6032,6 +6111,10 @@ function writeManifest(h, payloadList) {
     deployed_at: h.ctx.today,
     ...relay === null ? {} : { deployed_from: relay },
     ...build2 === null ? {} : { build: build2 },
+    // The organization layer's identity (David, 2026-10-21): three keys, ABSENT
+    // when no layer is installed, so a manifest without one is byte-identical to
+    // what it always was.
+    ...org === null ? {} : org,
     files
   };
   const bytes = jqFormat(doc);
@@ -6065,16 +6148,50 @@ function writeManifest(h, payloadList) {
 import { chmodSync as chmodSync2, readFileSync as readFileSync14, statSync as statSync8, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join20 } from "node:path";
 
+// src/nouns/harness/addendum.ts
+import { createHash as createHash2 } from "node:crypto";
+var ADDENDUM_BEGIN = "<!-- scrumux:repo-governance begin -->";
+var ADDENDUM_END = "<!-- scrumux:repo-governance end -->";
+var ADDENDUM_HEADING = "## Repo governance addendum";
+var normaliseText = (text2) => `${text2.replace(/\r\n/g, "\n").trim()}
+`;
+var addendumSha = (text2) => createHash2("sha256").update(normaliseText(text2)).digest("hex");
+function splitAddendum(bytes) {
+  const s2 = bytes.toString("utf8");
+  const b = s2.lastIndexOf(ADDENDUM_BEGIN);
+  if (b < 0) return { head: bytes, section: null, text: null };
+  const e = s2.indexOf(ADDENDUM_END, b);
+  if (e < 0) return { head: bytes, section: null, text: null };
+  const tailEnd = e + ADDENDUM_END.length;
+  if (s2.slice(tailEnd).trim() !== "") return { head: bytes, section: null, text: null };
+  const start = b > 0 && s2[b - 1] === "\n" ? b - 1 : b;
+  const section = s2.slice(start);
+  const inner = s2.slice(b + ADDENDUM_BEGIN.length, e);
+  const body = inner.startsWith(`
+${ADDENDUM_HEADING}`) ? inner.slice(ADDENDUM_HEADING.length + 1) : inner;
+  return { head: Buffer.from(s2.slice(0, start), "utf8"), section, text: normaliseText(body) };
+}
+function renderAddendum(text2) {
+  return `
+${ADDENDUM_BEGIN}
+${ADDENDUM_HEADING}
+
+${normaliseText(text2)}${ADDENDUM_END}
+`;
+}
+
 // src/nouns/harness/constitution.ts
 var SEQUESTER_NOTE = "\n## Sequestered instructions\n\nInstructions from before the harness are sequestered in `.claude/sequestered/` (`.claude/SEQUESTERED.json`). They carry no authority: do not follow, move or copy them. The owner reviews them with a session; what he re-admits is written into `.claude/rules/project-standards.md`. Where this file and the rules do not answer how this repo works, ask.\n";
 var OURS_MARKER = "governed by the **harness**";
-function desiredConstitution(payload, sequestered) {
-  return sequestered ? Buffer.concat([payload, Buffer.from(SEQUESTER_NOTE)]) : payload;
+function desiredConstitution(payload, sequestered, addendum = null) {
+  const base = sequestered ? Buffer.concat([payload, Buffer.from(SEQUESTER_NOTE)]) : payload;
+  return addendum === null ? base : Buffer.concat([base, Buffer.from(addendum)]);
 }
 function constitutionAct(current, payload, sequestered) {
   if (current === null) return "install";
-  if (current.equals(desiredConstitution(payload, sequestered))) return "unchanged";
-  if (current.toString("utf8").includes(OURS_MARKER)) return "update";
+  const { head } = splitAddendum(current);
+  if (head.equals(desiredConstitution(payload, sequestered))) return "unchanged";
+  if (head.toString("utf8").includes(OURS_MARKER)) return "update";
   return "foreign";
 }
 
@@ -6121,6 +6238,7 @@ function applyConstitution(h, seq) {
   const payload = readFileSync14(srcMd);
   const note = noteDue(seq);
   const current = isFile(tClaude) ? readFileSync14(tClaude) : null;
+  const addendum = current === null ? null : splitAddendum(current).section;
   const act = constitutionAct(current, payload, note);
   if (act === "unchanged") {
     item(h, "CLAUDE.md", "UNCHANGED");
@@ -6130,13 +6248,13 @@ function applyConstitution(h, seq) {
     cli.die(`CLAUDE.md in ${target} is this repo's own and is still in place, so the constitution was not installed over it \u2014 run scrumux harness sequester ${target}, then re-run`);
   }
   try {
-    writeFileSync6(tClaude, desiredConstitution(payload, note));
+    writeFileSync6(tClaude, desiredConstitution(payload, note, addendum));
     chmodSync2(tClaude, statSync8(srcMd).mode & 4095);
   } catch {
     cli.die(act === "install" ? `cannot install CLAUDE.md into ${target}` : `cannot update CLAUDE.md in ${target}`);
   }
   if (act === "update") {
-    item(h, "CLAUDE.md", "UPDATED");
+    item(h, "CLAUDE.md", "UPDATED", addendum === null ? "" : "the repo governance addendum at its end kept verbatim");
     return "UPDATED";
   }
   const moved = seq.entries.find((e) => e.from === "CLAUDE.md");
@@ -6454,6 +6572,7 @@ function gatherListing(h, keep) {
   const t = h.target;
   const tracked = trackedFiles(t) ?? [];
   const standard = standardPaths(t, h.srcClaude, h.srcRoot);
+  for (const p of h.claimed ?? []) standard.add(p);
   let rootClaudeOurs = false;
   try {
     rootClaudeOurs = readFileSync15(join21(t, "CLAUDE.md"), "utf8").includes(OURS_MARKER);
@@ -6744,520 +6863,296 @@ function reportSessionPermissions(h, tset) {
   }
 }
 
-// src/nouns/harness/deploy.ts
-function cpP(src, dst) {
-  copyFileSync2(src, dst);
-  const st = statSync10(src);
-  chmodSync5(dst, st.mode & 4095);
-  utimesSync2(dst, st.atime, st.mtime);
+// src/nouns/harness/walls-roster.ts
+var SHELL = "PreToolUse:Bash|PowerShell";
+var READ = "PreToolUse:Read";
+var EDIT = "PreToolUse:Edit|Write|NotebookEdit";
+var BASE_WALLS = [
+  { name: "block-direct-llm", chains: [SHELL] },
+  { name: "block-secret-reads", chains: [SHELL, READ] },
+  { name: "block-destructive", chains: [SHELL] },
+  { name: "block-upstream-edit", chains: [SHELL, EDIT] },
+  { name: "block-governance-write", chains: [SHELL, EDIT] }
+];
+var BASE_WALL_NAMES = BASE_WALLS.map((w) => w.name);
+var WALL_COUNT = BASE_WALLS.length;
+function chainMatcher(chain) {
+  return chain.slice(chain.indexOf(":") + 1);
 }
-function bytesEqual(a, b) {
-  try {
-    return readFileSync19(a).equals(readFileSync19(b));
-  } catch {
-    return false;
-  }
+var CHAIN_TOOLS = {
+  [SHELL]: ["Bash", "PowerShell"],
+  [READ]: ["Read"],
+  [EDIT]: ["Edit", "Write", "NotebookEdit"]
+};
+function isObj2(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
 }
-function parseJson(path) {
-  try {
-    return JSON.parse(readFileSync19(path, "utf8"));
-  } catch {
-    return void 0;
-  }
+function hookFiles(h) {
+  if (!isObj2(h)) return [];
+  const args = h["args"];
+  if (Array.isArray(args) && args.length > 0 && typeof args[0] === "string") return [args[0]];
+  if (typeof h["command"] === "string") return h["command"].split(/\s+/);
+  return [];
 }
-var PWALL_TEMPLATE = `# This repo's wall rules. The one place to extend the refusal layer.
-#
-#   refuse <extended-regex> | why this repo refuses it
-#   allow  <extended-regex> | why this repo permits it
-#
-# \`refuse\` adds a pattern to every wall \u2014 what only this repo knows is
-# dangerous here. \`allow\` exempts a command the built-in walls would stop,
-# for work that legitimately needs it.
-#
-# Both need a reason after the pipe. A rule with no reason is ignored:
-# an exemption nobody can read is an exemption nobody can audit.
-# \`allow\` wins over \`refuse\`. Lines starting with # are comments.
-#
-# Examples:
-#   refuse  flyctl deploy      | production is released by CI, never from a session
-#   allow   api\\.openai\\.com   | this coursework calls the provider directly on purpose
-`;
-var PSTD_TEMPLATE = `---
-name: project-standards
-paths: ["**"]
-skills: []
-scripts: []
----
-# Rule: this repo's own standards
-
-Yours to write. Nothing here is enforced by the harness: no gate reads
-this file, no check fails on it, and no exit code depends on its
-contents. It is context an agent is given, not a wall it hits.
-
-Note on \`paths\`: the CLI loads ALL rules every session regardless of
-what \`paths\` declares (D-0008; path-scoping is tracked as I-0001), so
-write these as standards that are always in context.
-
-To give a standard teeth of your own, name a skill in \`skills:\` and the
-scripts it calls in \`scripts:\` \u2014 the harness checks those pointers
-resolve to real files, and nothing more.
-
-An example, commented out so a fresh repo validates with no dangling
-pointers:
-
-    # ---
-    # name: project-standards
-    # paths: ["**"]
-    # skills: ["notebook-deps"]
-    # scripts: [".claude/scripts/check-deps"]
-    # ---
-    # ## Pinned dependencies
-    # The graded notebook runs against the versions in requirements.txt.
-    # Do not change them, and do not add imports the file does not pin.
-    # Before touching any cell that imports, run .claude/scripts/check-deps.
-`;
-function postInstall(ctx, argv, extraEnv = {}) {
-  const self = selfBundle(ctx.env);
-  if (self === null) {
-    return {
-      rc: 127,
-      combined: "",
-      note: " \u2014 and this process has no bundle path to re-run the check on, so the check did not run at all",
-      rerun: "scrumux"
-    };
-  }
-  const r = spawnCombinedWith(process.execPath, [self, ...argv], {
-    cwd: ctx.cwd,
-    env: { ...ctx.env, ...extraEnv },
-    // 64 MiB. `graph code build` reports a line per skipped language and can
-    // print a long parse-error list over a big tree, and Node's 1 MiB default
-    // truncates a child's stream while leaving its exit code intact -- a cut
-    // report that still reads as a verdict.
-    maxBuffer: 64 * 1024 * 1024
-  });
-  return { ...r, note: "", rerun: `${process.execPath} ${self}` };
+function entryFiles(entry) {
+  const hs = entry["hooks"];
+  return Array.isArray(hs) ? hs.flatMap(hookFiles) : [];
 }
-function harnessDeploy(h) {
-  const { cli, ctx, target } = h;
-  cli.say(`=== HARNESS DEPLOY -> ${target} (${ctx.today}) ===`);
-  let created = 0;
-  let updated = 0;
-  let unchanged = 0;
-  const payloadList = allPayloadFiles(h.srcClaude, h.srcRoot);
-  for (const rel2 of payloadList) {
-    if (rel2 === "") continue;
-    const src = srcPathOf(rel2, h.srcClaude, h.srcRoot);
-    const dst = join25(target, rel2);
-    if (!isFile(dst)) {
-      try {
-        mkdirSync6(dirname9(dst), { recursive: true });
-      } catch {
-        cli.die(`cannot create ${dirname9(dst)} \u2014 check the target's permissions`);
-      }
-      try {
-        cpP(src, dst);
-      } catch {
-        cli.die(`cannot install ${rel2} into ${target} \u2014 check the target's permissions`);
-      }
-      item(h, rel2, "CREATED");
-      created += 1;
-    } else if (bytesEqual(src, dst)) {
-      item(h, rel2, "UNCHANGED");
-      unchanged += 1;
-    } else {
-      try {
-        cpP(src, dst);
-      } catch {
-        cli.die(`cannot update ${rel2} in ${target} \u2014 check the target's permissions`);
-      }
-      item(h, rel2, "UPDATED");
-      updated += 1;
+function namesWall(file, wall) {
+  const leaf = file.split(/[\\/]/).pop() ?? "";
+  return leaf === `${wall}.mjs` || leaf === `${wall}.sh`;
+}
+function wallsUnwired(doc) {
+  const pre = isObj2(doc) && isObj2(doc["hooks"]) ? doc["hooks"]["PreToolUse"] : void 0;
+  const entries = Array.isArray(pre) ? pre.filter(isObj2) : [];
+  const missing = [];
+  for (const w of BASE_WALLS) {
+    for (const chain of w.chains) {
+      const tools = CHAIN_TOOLS[chain] ?? [];
+      const covered = tools.every((tool) => entries.some((e) => {
+        const m = typeof e["matcher"] === "string" ? e["matcher"] : "";
+        let matches = m === "" || m === "*";
+        try {
+          matches ||= new RegExp(`^(?:${m})$`).test(tool);
+        } catch {
+        }
+        return matches && entryFiles(e).some((f) => namesWall(f, w.name));
+      }));
+      if (!covered) missing.push({ wall: w.name, chain });
     }
   }
-  const seq = runSequester(h, { dryRun: false, keep: [] });
-  const cst = applyConstitution(h, seq);
-  if (cst === "CREATED") created += 1;
-  else if (cst === "UPDATED") updated += 1;
-  else if (cst === "UNCHANGED") unchanged += 1;
-  const tset = join25(target, ".claude/settings.json");
-  let settingsTouched = false;
-  if (!isFile(tset)) {
-    try {
-      mkdirSync6(join25(target, ".claude"), { recursive: true });
-    } catch {
-      cli.die(`cannot create ${target}/.claude \u2014 check the target's permissions`);
-    }
-    try {
-      cpP(join25(h.srcClaude, "settings.json"), tset);
-    } catch {
-      cli.die(`cannot install .claude/settings.json into ${target} \u2014 check the target's permissions`);
-    }
-    item(h, ".claude/settings.json", "CREATED", "written verbatim at the repo ROOT, which is the only place Claude Code will resolve it");
-    created += 1;
-    settingsTouched = true;
-  } else {
-    let srcAllow = [];
-    try {
-      srcAllow = allowOf(JSON.parse(readFileSync19(join25(h.srcClaude, "settings.json"), "utf8")));
-    } catch {
-      srcAllow = [];
-    }
-    const newRules = unionAllow(cli, tset, srcAllow);
-    if (newRules > 0) {
-      item(h, ".claude/settings.json", "UPDATED", `permissions.allow unioned: ${newRules} canon rule(s) appended; hooks and env untouched`);
-      updated += 1;
-      settingsTouched = true;
-    } else {
-      const mc = missingChains(parseJson(tset));
-      if (mc !== "") {
-        item(h, ".claude/settings.json", "UNCHANGED", `kept \u2014 deploy does not merge; hook chain(s) absent: ${mc}`);
-      } else {
-        item(h, ".claude/settings.json", "UNCHANGED", `kept \u2014 deploy does not merge; all ${HOOK_CHAIN_COUNT} hook chains present`);
-      }
-      unchanged += 1;
-    }
+  return missing;
+}
+function wallsFixText(missing, target, srcSettings) {
+  const pairs = missing.map((m) => `${m.wall} on ${m.chain}`).join(", ");
+  const walls = [...new Set(missing.map((m) => m.wall))];
+  const entries = walls.map((w) => `{"type": "command", "command": "node", "args": ["\${CLAUDE_PROJECT_DIR}/.claude/dist/${w}.mjs"]}`).join(" and ");
+  return `${walls.length} of the ${WALL_COUNT} base walls not wired in ${target}/.claude/settings.json: ${pairs}. This repo kept its own settings.json, and a wall added upstream lands in .claude/dist with nothing running it until a hook names it; harness deploy appends the entry itself only where a PreToolUse entry has exactly the canonical matcher. Fix: add ${entries} to the hooks of each named PreToolUse chain, or take the current settings verbatim from ${srcSettings}. Advisory: never moves the exit code.`;
+}
+
+// src/nouns/harness/wall-hooks.ts
+import { chmodSync as chmodSync5, readFileSync as readFileSync19, renameSync as renameSync5, writeFileSync as writeFileSync9 } from "node:fs";
+function isObj3(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function preToolUse(doc) {
+  if (!isObj3(doc) || !isObj3(doc["hooks"])) return null;
+  const pre = doc["hooks"]["PreToolUse"];
+  return Array.isArray(pre) ? pre : null;
+}
+function canonicalHook(srcDoc, pair) {
+  const m = chainMatcher(pair.chain);
+  for (const e of preToolUse(srcDoc) ?? []) {
+    if (!isObj3(e) || e["matcher"] !== m || !Array.isArray(e["hooks"])) continue;
+    const h = e["hooks"].find((x) => hookFiles(x).some((f) => namesWall(f, pair.wall)));
+    if (h !== void 0) return h;
   }
-  for (const seed of detectedToolSeeds(target)) {
-    const n = isFile(tset) ? unionAllow(cli, tset, [...seed.rules]) : 0;
-    if (n === 0) continue;
-    item(h, ".claude/settings.json", "SEEDED", `permissions.allow: ${seed.rules.join(" ")} for ${seed.manifest} (${n} appended) \u2014 a dispatched session has nobody to approve its build tool`);
-    if (!settingsTouched) {
-      updated += 1;
-      settingsTouched = true;
-    }
-  }
-  for (const j of JOURNALS2) {
-    const jp = join25(target, "governance", j);
-    if (isFile(jp)) {
-      item(h, `governance/${j}`, "UNCHANGED");
-      unchanged += 1;
+  return null;
+}
+function planWallHooks(doc, srcDoc) {
+  const out = { added: [], unplaced: [] };
+  const pre = preToolUse(doc);
+  for (const pair of wallsUnwired(doc)) {
+    const hook = canonicalHook(srcDoc, pair);
+    if (hook === null) continue;
+    const m = chainMatcher(pair.chain);
+    if (pre === null) {
+      out.unplaced.push({ ...pair, why: "the file has no hooks.PreToolUse list" });
       continue;
     }
-    refusing(cli, () => {
-      ensureFile(jp, '{"entries": []}');
-    });
-    if (j === "repo-health.json") {
-      item(h, `governance/${j}`, "CREATED", "seeded empty \u2014 register this repo's checks with scrumux health add");
-    } else {
-      item(h, `governance/${j}`, "CREATED");
+    const entry = pre.find((e) => isObj3(e) && e["matcher"] === m);
+    if (entry === void 0) {
+      out.unplaced.push({ ...pair, why: `no PreToolUse entry with matcher "${m}"` });
+      continue;
     }
-    created += 1;
+    const hooks = entry["hooks"];
+    if (!Array.isArray(hooks)) {
+      out.unplaced.push({ ...pair, why: `the "${m}" entry's hooks is not a list` });
+      continue;
+    }
+    hooks.push(JSON.parse(JSON.stringify(hook)));
+    out.added.push(pair);
   }
-  const seededList = [];
-  const seeded = (rel2) => {
-    seededList.push(rel2);
-  };
-  seeded("governance/enforcement-posture.md");
-  const pwallRel = ".claude/project-walls.conf";
-  seeded(pwallRel);
-  const pwall = join25(target, pwallRel);
-  if (isFile(pwall)) {
-    item(h, pwallRel, "UNCHANGED", "kept \u2014 a repo's own wall rules are never overwritten");
-    unchanged += 1;
-  } else {
-    try {
-      writeFileSync9(pwall, PWALL_TEMPLATE);
-    } catch {
-    }
-    item(h, pwallRel, "CREATED", "the one pathway for this repo's own wall rules");
-    created += 1;
-  }
-  const pstdRel = ".claude/rules/project-standards.md";
-  seeded(pstdRel);
-  const pstd = join25(target, pstdRel);
-  if (isFile(pstd)) {
-    item(h, pstdRel, "UNCHANGED", "kept \u2014 a repo's own standards are never overwritten");
-    unchanged += 1;
-  } else {
-    try {
-      mkdirSync6(join25(target, ".claude/rules"), { recursive: true });
-    } catch {
-      cli.die(`cannot create ${target}/.claude/rules \u2014 check the target's permissions`);
-    }
-    try {
-      writeFileSync9(pstd, PSTD_TEMPLATE);
-    } catch {
-    }
-    item(h, pstdRel, "CREATED", "empty template for this repo's own standards; advisory only, never overwritten");
-    created += 1;
-  }
-  const viewFiles = ["AI_LOG.MD", "DECISIONS.MD", "BACKLOG.MD", "governance/governance-graph.json", ".scrumux/events.jsonl", ".scratch/"];
-  const viewFilesStr = viewFiles.join(" ");
-  const ign = join25(target, ".gitignore");
-  const ignLines = isFile(ign) ? readFileSync19(ign, "utf8").split("\n") : null;
-  let ignAdd = "";
-  const ignAddList = [];
-  for (const vf of viewFiles) {
-    const re = new RegExp(`^/?${vf.replace(/\./g, "\\.")}[\\s]*$`);
-    if (ignLines !== null && ignLines.some((l) => re.test(l))) continue;
-    ignAdd += ` ${vf}`;
-    ignAddList.push(vf);
-  }
-  if (ignAdd === "") {
-    item(h, ".gitignore", "UNCHANGED", `kept \u2014 already ignores the generated views and scratch (${viewFilesStr})`);
-    unchanged += 1;
-  } else {
-    const ignExisted = ignLines !== null;
-    try {
-      if (ignExisted) {
-        const raw = readFileSync19(ign);
-        if (raw.length > 0 && raw[raw.length - 1] !== 10) appendFileSync(ign, "\n");
-      }
-      let block = "";
-      if (ignExisted) block += "\n";
-      block += "# Written by scrumux, not by hand: the rendered views, the walls' event log and the session scratch directory.\n";
-      block += "# The JSON under governance/ is the source of truth; these are projections.\n";
-      for (const vf of ignAddList) block += `${vf}
-`;
-      appendFileSync(ign, block);
-    } catch {
-      cli.die(`cannot write ${ign} \u2014 check the target's permissions`);
-    }
-    if (ignExisted) {
-      item(h, ".gitignore", "UPDATED", `appended${ignAdd} \u2014 scrumux writes them into the repo root (views render, the walls' event log, session scratch in .scratch/), and an untracked generated file reads as an uncommitted change`);
-      updated += 1;
-    } else {
-      item(h, ".gitignore", "CREATED", `ignoring${ignAdd} \u2014 scrumux writes them into the repo root (views render, the walls' event log, session scratch in .scratch/), and an untracked generated file reads as an uncommitted change`);
-      created += 1;
-    }
-  }
-  const cgPath = join25(target, "governance/code-graph.json");
-  const reuse = reusableIndex(target);
-  const cg = reuse.reuse ? null : postInstall(ctx, ["graph", "code", "build", "--repo", target]);
-  const cgout = cg === null ? "" : stripTrailingNewlines(cg.combined);
-  if (cg === null) {
-    cli.say(`  REUSED    governance/code-graph.json \u2014 committed and fresh (${reuse.reason})`);
-    check(h, "code-graph-built", true, `the committed code index in ${target} is fresh (${reuse.reason}), so it was reused rather than rebuilt; every scrumux graph code query there answers from it`);
-  } else if (cg.rc === 0) {
-    let cgNow = null;
-    try {
-      cgNow = readFileSync19(cgPath, "utf8");
-    } catch {
-      cgNow = null;
-    }
-    if (indexNeedsCommit(committedText(target, "governance/code-graph.json"), cgNow)) {
-      (h.wrote ??= []).push("governance/code-graph.json");
-    }
-    const first = (cgout.split("\n", 1)[0] ?? "").replace(/^graph code: /, "");
-    const parseLine = cgout.split("\n").find((l) => l.startsWith("parse errors in: ")) ?? "";
-    const partial = parseLine === "" ? "" : ` \u2014 ${parseLine}`;
-    cli.say(`  BUILT     governance/code-graph.json \u2014 ${first}${partial}`);
-    check(h, "code-graph-built", true, `the code index was built into ${target} from this checkout, so every scrumux graph code query there answers with no parser of its own${partial}${cg.note}`);
-  } else {
-    cli.say("  SKIPPED   governance/code-graph.json \u2014 not built");
-    check(h, "code-graph-built", false, `the code index was NOT built into ${target}: ${trNewlines(shHead(cgout, 2), " ")} \u2014 every scrumux graph code query there will say it has no index. Build it from any harness checkout that has the tree-sitter grammars: scrumux graph code build --repo ${target}${cg.note}`);
-  }
-  let pruned = 0;
-  const prevManifest = join25(target, ".claude/DEPLOYED");
-  if (isFile(prevManifest)) {
-    let was = [];
-    try {
-      const doc = JSON.parse(readFileSync19(prevManifest, "utf8"));
-      const files = doc.files;
-      if (files === null || files === void 0 || typeof files !== "object" || Array.isArray(files)) {
-        throw new Error("no files map");
-      }
-      was = Object.keys(files).sort();
-    } catch {
-      was = [];
-    }
-    for (const old of was) {
-      if (old === "") continue;
-      if (payloadList.includes(old)) continue;
-      if (seededList.includes(old)) {
-        item(h, old, "KEPT", "repo-owned, not pruned \u2014 an older harness shipped it as payload and this manifest still claims it; dropped from the new manifest so no later deploy reconsiders it");
-        continue;
-      }
-      if (!isFile(join25(target, old))) continue;
-      try {
-        unlinkSync(join25(target, old));
-      } catch {
-        continue;
-      }
-      item(h, old, "REMOVED", "no longer part of the payload");
-      pruned += 1;
-    }
-  }
-  const man = writeManifest(h, payloadList);
-  item(h, ".claude/DEPLOYED", man.status, `manifest of ${man.filesCount} payload file(s) from ${[...man.sourceCommit].slice(0, 8).join("")}`);
-  const total = created + updated + unchanged;
-  cli.say("");
-  cli.say("--- checks ---");
-  if (isFile(tset)) {
-    const mc = missingChains(parseJson(tset));
-    if (mc !== "") {
-      check(h, "settings-hook-chains", false, `${target}/.claude/settings.json is missing hook chain(s): ${mc} \u2014 ${settingsFixText(h.srcClaude, target)}`);
-    } else {
-      check(h, "settings-hook-chains", true, `all ${HOOK_CHAIN_COUNT} hook chains declared at the repo root`);
-    }
-  } else {
-    check(h, "settings-hook-chains", false, `${target}/.claude/settings.json does not exist \u2014 install it: cp ${h.srcClaude}/settings.json ${target}/.claude/settings.json`);
-  }
-  if (isFile(tset)) {
-    let deadhook = "";
-    for (const t of hookTargets(parseJson(tset))) {
-      if (t.file === "") continue;
-      const dhp = expandProjectDir(t.file, target);
-      if (!isFile(dhp)) {
-        const shown = dhp.startsWith(`${target}/`) ? dhp.slice(target.length + 1) : dhp;
-        deadhook += ` ${shown}`;
-      }
-    }
-    if (deadhook !== "") {
-      check(h, "settings-hook-commands", false, `${target}/.claude/settings.json declares hook command(s) naming a file that is not there:${deadhook} \u2014 every event on those chains fails silently, and the repo looks entirely normal from the inside. This repo kept its own settings.json (deploy never merges one), so a payload file renamed or dropped upstream leaves the pointer behind. Take the current settings verbatim: rm ${target}/.claude/settings.json && <this command> again \u2014 or edit those command(s) by hand if this repo's settings.json carries hooks of its own worth keeping.`);
-    } else {
-      check(h, "settings-hook-commands", true, "every hook command in the target's settings.json names a file that exists");
-    }
-  } else {
-    check(h, "settings-hook-commands", false, "not checked \u2014 no settings.json at the repo root");
-  }
-  reportSessionPermissions(h, tset);
-  const gv = postInstall(ctx, ["records", "check"], { GOV_ROOT: target });
-  const gvout = stripTrailingNewlines(gv.combined);
-  if (gv.rc === 0) {
-    check(h, "records-check", true, `clean against ${target}${gv.note}`);
-  } else {
-    check(h, "records-check", false, `exited ${gv.rc} against ${target} \u2014 the install is NOT good; run GOV_ROOT=${target} ${gv.rerun} records check and fix each named finding. First lines: ${grepHead3Semis(gvout, /^ *(FAIL|WARN) /)}${gv.note}`);
-  }
-  const moved = seq.entries.length;
-  const seqWrote = h.items.some((i) => (i.status === "CREATED" || i.status === "UPDATED") && (i.path === SEQ_RECORD || i.path.startsWith(`${SEQ_DIR}/`)));
-  let changed;
-  let summary;
-  if (created === 0 && updated === 0 && moved === 0 && !seqWrote) {
-    changed = false;
-    summary = `harness deploy: nothing changed \u2014 all ${total} payload item(s) in ${target} already match this harness byte for byte, and .claude/DEPLOYED already describes them.`;
-  } else {
-    changed = true;
-    summary = `harness deploy: ${created} created, ${updated} updated, ${unchanged} unchanged, ${pruned} removed (${total} payload item(s)) in ${target}, plus .claude/DEPLOYED.`;
-    if (moved > 0) summary += ` ${moved} earlier instruction file(s) sequestered in .claude/sequestered/ (.claude/SEQUESTERED.json): they carry no authority until the owner re-admits them.`;
-  }
-  if (cli.fails() !== 0) {
-    summary += " The install FAILED its checks \u2014 see the check lines above; nothing was rolled back, fix and re-run.";
-  }
-  if (changed && isDir(join25(target, ".git"))) {
-    let dirty = 0;
-    try {
-      const r = spawnSync7("git", ["-C", target, "status", "--porcelain"], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"]
-      });
-      const out = r.status === 0 && typeof r.stdout === "string" ? r.stdout : "";
-      dirty = (out.match(/\n/g) ?? []).length;
-    } catch {
-      dirty = 0;
-    }
-    if (dirty > 0) {
-      summary += ` ${target} now has ${dirty} uncommitted file(s). \`deliver\` refuses a dirty checkout, so commit them before accepting or dispatching work there.`;
-    }
-  }
-  return harnessEmit(h, summary, {
-    changed,
-    created,
-    updated,
-    unchanged,
-    // Additive (R-020): what a caller committing this deploy should stage.
-    commit_paths: commitPaths(h)
-  });
+  return out;
 }
-
-// src/nouns/harness/verify.ts
-import { readFileSync as readFileSync22, opendirSync as opendirSync2 } from "node:fs";
-import { join as join28 } from "node:path";
-
-// src/journal/timeout.ts
-import { spawnSync as spawnSync8 } from "node:child_process";
-var SIGNUM = {
-  SIGHUP: 1,
-  SIGINT: 2,
-  SIGQUIT: 3,
-  SIGILL: 4,
-  SIGTRAP: 5,
-  SIGABRT: 6,
-  SIGBUS: 10,
-  SIGFPE: 8,
-  SIGKILL: 9,
-  SIGUSR1: 30,
-  SIGSEGV: 11,
-  SIGUSR2: 31,
-  SIGPIPE: 13,
-  SIGALRM: 14,
-  SIGTERM: 15
-};
-var GRACE_MS = 5e3;
-var SUPERVISOR = `
-const { spawn, spawnSync } = require('node:child_process');
-const { writeSync } = require('node:fs');
-const [ms, grace, command] = [Number(process.argv[1]), Number(process.argv[2]), process.argv[3]];
-const win = process.platform === 'win32';
-const report = (r) => { try { writeSync(3, JSON.stringify(r)); } catch {} };
-let child;
-try {
-  child = spawn('sh', ['-c', command], { detached: !win, stdio: ['ignore', 'pipe', 'pipe'] });
-} catch { report({ code: 127, signal: null, timedOut: false }); process.exit(0); }
-child.stdout.pipe(process.stdout);
-child.stderr.pipe(process.stderr);
-let timedOut = false;
-let exitCode = null;
-let exitSignal = null;
-let done = false;
-const stopGroup = (sig) => {
-  if (win) { spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f']); return; }
-  try { process.kill(-child.pid, sig); } catch {}
-};
-const finish = () => {
-  if (done) return;
-  done = true;
-  report({ code: exitCode, signal: exitSignal, timedOut });
-  process.exitCode = 0;
-  if (timedOut) process.exit(0);
-};
-let hard = null;
-const timer = ms > 0 ? setTimeout(() => {
-  timedOut = true;
-  stopGroup('SIGTERM');
-  hard = setTimeout(() => { stopGroup('SIGKILL'); finish(); }, grace);
-}, ms) : null;
-child.on('error', () => { if (timer) clearTimeout(timer); report({ code: 127, signal: null, timedOut: false }); process.exit(0); });
-child.on('exit', (code, signal) => { exitCode = code; exitSignal = signal; });
-child.on('close', () => {
-  if (timer) clearTimeout(timer);
-  if (hard) clearTimeout(hard);
-  finish();
-});
-`;
-function runWithTimeout(seconds, command, opts = {}) {
-  const ms = seconds > 0 ? Math.round(seconds * 1e3) : 0;
-  const res = spawnSync8(process.execPath, ["-e", SUPERVISOR, String(ms), String(GRACE_MS), command], {
-    cwd: opts.cwd,
-    env: opts.env,
-    encoding: "utf8",
-    stdio: opts.capture === true ? ["ignore", "pipe", "pipe", "pipe"] : ["ignore", "inherit", "inherit", "pipe"],
-    maxBuffer: 256 * 1024 * 1024
-  });
-  const rawOut = typeof res.stdout === "string" ? res.stdout : "";
-  const rawErr = typeof res.stderr === "string" ? res.stderr : "";
-  const combine = opts.combine === true;
-  const stdout = combine ? rawOut + rawErr : rawOut;
-  const stderr = combine ? "" : rawErr;
-  const r = supervisorReport(res.output?.[3]);
-  if (r === null) return { code: 127, timedOut: false, signal: null, stdout, stderr };
-  if (r.timedOut) return { code: 128 + SIGNUM["SIGALRM"], timedOut: true, signal: "SIGALRM", stdout, stderr };
-  if (r.signal !== null) return { code: 128 + (SIGNUM[r.signal] ?? 0), timedOut: r.signal === "SIGALRM", signal: r.signal, stdout, stderr };
-  return { code: r.code ?? 127, timedOut: false, signal: null, stdout, stderr };
-}
-function supervisorReport(raw) {
-  if (typeof raw !== "string" || raw === "") return null;
+function unionWallHooks(cli, tset, srcSettings) {
+  const none = { added: [], unplaced: [] };
+  let doc;
+  let src;
   try {
-    const o = JSON.parse(raw);
-    return {
-      code: typeof o.code === "number" ? o.code : null,
-      signal: typeof o.signal === "string" ? o.signal : null,
-      timedOut: o.timedOut === true
-    };
+    doc = parsePreservingNumbers(readFileSync19(tset, "utf8"));
   } catch {
-    return null;
+    return none;
   }
+  try {
+    src = JSON.parse(readFileSync19(srcSettings, "utf8"));
+  } catch {
+    return none;
+  }
+  if (!isObj3(doc)) return none;
+  const plan = planWallHooks(doc, src);
+  if (plan.added.length === 0) return plan;
+  const tmp = `${tset}.tmp.${process.pid}`;
+  try {
+    writeFileSync9(tmp, jqFormat(doc));
+  } catch {
+    cli.die("cannot stage settings.json merge");
+  }
+  try {
+    chmodSync5(tmp, 384);
+  } catch {
+  }
+  try {
+    renameSync5(tmp, tset);
+  } catch {
+    cli.die(`cannot write ${tset} \u2014 check the target's permissions`);
+  }
+  return plan;
 }
+function pairsText(pairs) {
+  return pairs.map((p) => `${p.wall} on ${p.chain}`).join(", ");
+}
+
+// src/nouns/org/lane.ts
+import {
+  chmodSync as chmodSync6,
+  copyFileSync as copyFileSync2,
+  mkdirSync as mkdirSync7,
+  readFileSync as readFileSync22,
+  renameSync as renameSync6,
+  statSync as statSync11,
+  utimesSync as utimesSync2,
+  writeFileSync as writeFileSync11
+} from "node:fs";
+import { dirname as dirname9, join as join26 } from "node:path";
+
+// src/walls/lib/org.ts
+import { existsSync as existsSync12, readFileSync as readFileSync20 } from "node:fs";
+var ORG_FILE = ".claude/ORG.json";
+var ORG_JOURNAL = "governance/org.json";
+var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var str3 = (o, k2) => typeof o[k2] === "string" ? o[k2] : "";
+var strList = (v) => {
+  if (typeof v === "string") return [v];
+  if (!Array.isArray(v)) return [];
+  return v.filter((x) => typeof x === "string");
+};
+function parseWall(v) {
+  if (!isObj4(v)) return { problem: "a wall must be an object" };
+  const id = str3(v, "id");
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) return { problem: `wall id '${id}' must be lower-case letters, digits and dashes` };
+  const decision = str3(v, "decision");
+  if (decision !== "ask" && decision !== "deny") return { problem: `wall ${id}: decision must be ask or deny, got '${decision}'` };
+  const tools = strList(v["tools"]);
+  if (tools.length === 0) return { problem: `wall ${id}: tools must name at least one tool (Bash, PowerShell, Edit, Write, NotebookEdit, Read)` };
+  const command = strList(v["command"]);
+  const path = strList(v["path"]);
+  if (command.length === 0 && path.length === 0) return { problem: `wall ${id}: needs a command pattern, a path pattern, or both` };
+  for (const k2 of ["incident", "who_is_stopped", "sanctioned_path", "message"]) {
+    if (str3(v, k2).trim() === "") {
+      return { problem: `wall ${id}: '${k2}' is required \u2014 a wall answers "who is being stopped?" in writing before it ships (Prime Article; docs/ORG-LAYER.md)` };
+    }
+  }
+  return {
+    wall: {
+      id,
+      tools,
+      command,
+      path,
+      decision,
+      incident: str3(v, "incident"),
+      who_is_stopped: str3(v, "who_is_stopped"),
+      sanctioned_path: str3(v, "sanctioned_path"),
+      message: str3(v, "message"),
+      why: str3(v, "why"),
+      provenance: str3(v, "provenance")
+    }
+  };
+}
+function parseInstalled(text2) {
+  let doc;
+  try {
+    doc = JSON.parse(text2);
+  } catch (e) {
+    return { error: `does not parse: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  if (!isObj4(doc)) return { error: "is not an object" };
+  const name = str3(doc, "name");
+  if (name === "") return { error: "names no organization" };
+  const walls = [];
+  for (const w of Array.isArray(doc["walls"]) ? doc["walls"] : []) {
+    const r = parseWall(w);
+    if ("problem" in r) return { error: r.problem };
+    walls.push(r.wall);
+  }
+  const items = [];
+  for (const it of Array.isArray(doc["items"]) ? doc["items"] : []) {
+    if (!isObj4(it)) continue;
+    const kind = str3(it, "kind");
+    if (kind !== "rule" && kind !== "skill" && kind !== "agent") continue;
+    items.push({ kind, id: str3(it, "id"), path: str3(it, "path"), sha256: str3(it, "sha256"), why: str3(it, "why"), provenance: str3(it, "provenance") });
+  }
+  const files = {};
+  if (isObj4(doc["files"])) {
+    for (const [k2, v] of Object.entries(doc["files"])) if (typeof v === "string") files[k2] = v;
+  }
+  return {
+    org: {
+      name,
+      version: str3(doc, "version"),
+      org_sha: str3(doc, "org_sha"),
+      installed_at: str3(doc, "installed_at"),
+      walls,
+      allow: strList(doc["allow"]),
+      items,
+      files
+    }
+  };
+}
+function readInstalled(root) {
+  const p = `${root}/${ORG_FILE}`;
+  if (!existsSync12(p)) return { kind: "absent" };
+  let text2;
+  try {
+    text2 = readFileSync20(p, "utf8");
+  } catch (e) {
+    return { kind: "unreadable", error: e instanceof Error ? e.message : String(e) };
+  }
+  const r = parseInstalled(text2);
+  if ("error" in r) return { kind: "unreadable", error: r.error };
+  return { kind: "ok", org: r.org };
+}
+function readAcceptances(root) {
+  const p = `${root}/${ORG_JOURNAL}`;
+  if (!existsSync12(p)) return [];
+  let doc;
+  try {
+    doc = JSON.parse(readFileSync20(p, "utf8"));
+  } catch {
+    return [];
+  }
+  if (!isObj4(doc) || !Array.isArray(doc["entries"])) return [];
+  const out = [];
+  for (const e of doc["entries"]) {
+    if (!isObj4(e) || str3(e, "kind") !== "accept") continue;
+    out.push({ id: str3(e, "id"), item: str3(e, "item"), reason: str3(e, "reason"), by: str3(e, "by"), authority: str3(e, "authority"), date: str3(e, "date") });
+  }
+  return out;
+}
+
+// src/nouns/org/store.ts
+import { createHash as createHash3 } from "node:crypto";
+import {
+  appendFileSync,
+  existsSync as existsSync13,
+  mkdirSync as mkdirSync6,
+  readFileSync as readFileSync21,
+  readdirSync as readdirSync4,
+  statSync as statSync10,
+  writeFileSync as writeFileSync10
+} from "node:fs";
+import { homedir } from "node:os";
+import { join as join25, resolve as resolve4 } from "node:path";
 
 // src/walls/lib/ere.ts
 var POSIX_CLASSES = {
@@ -7388,9 +7283,1263 @@ function ereMatches(pattern, subject) {
   return t.ok ? matchesAnyLine(t.regex, subject) : false;
 }
 
+// src/nouns/org/store.ts
+var ORG_SCHEMA = "scrumux.org/1";
+var PAYLOAD_SUFFIX = ".payload";
+function orgRoot(env) {
+  const r = env["SCRUMUX_ORG_ROOT"];
+  if (r !== void 0 && r !== "") return resolve4(r);
+  return join25(env["HOME"] ?? homedir(), "server", "data", "scrumux", "org");
+}
+function storeOf(env, org) {
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(org)) throw new Error(`organization name '${org}' must be lower-case letters, digits and dashes`);
+  return join25(orgRoot(env), org);
+}
+var isObj5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var str4 = (o, k2) => typeof o[k2] === "string" ? o[k2] : "";
+var ID_RE = /^[a-z0-9][a-z0-9-]*$/;
+function parseManifest(text2) {
+  const problems = [];
+  let doc;
+  try {
+    doc = JSON.parse(text2);
+  } catch (e) {
+    return { manifest: emptyManifest(), problems: [`org.json does not parse: ${e instanceof Error ? e.message : String(e)}`] };
+  }
+  if (!isObj5(doc)) return { manifest: emptyManifest(), problems: ["org.json is not an object"] };
+  const m = emptyManifest();
+  m.schema = str4(doc, "schema");
+  if (m.schema !== ORG_SCHEMA) problems.push(`schema must be '${ORG_SCHEMA}', got '${m.schema}'`);
+  m.name = str4(doc, "name");
+  if (!ID_RE.test(m.name)) problems.push(`name '${m.name}' must be lower-case letters, digits and dashes`);
+  m.version = str4(doc, "version");
+  if (!/^[0-9A-Za-z][0-9A-Za-z.-]*$/.test(m.version)) problems.push(`version '${m.version}' must be a plain version string (1.0.0)`);
+  const ids = /* @__PURE__ */ new Set();
+  const fileItems = (key, kind) => {
+    const out = [];
+    const arr4 = doc[key];
+    if (arr4 === void 0) return out;
+    if (!Array.isArray(arr4)) {
+      problems.push(`${key} must be a list`);
+      return out;
+    }
+    for (const v of arr4) {
+      if (!isObj5(v)) {
+        problems.push(`${key}: an item must be an object`);
+        continue;
+      }
+      const id = str4(v, "id");
+      const file = str4(v, "file");
+      if (!ID_RE.test(id)) {
+        problems.push(`${key}: id '${id}' must be lower-case letters, digits and dashes`);
+        continue;
+      }
+      if (ids.has(`${kind}:${id}`)) {
+        problems.push(`${key}: ${kind}:${id} is listed twice`);
+        continue;
+      }
+      ids.add(`${kind}:${id}`);
+      if (!file.startsWith("pack/") || !file.endsWith(PAYLOAD_SUFFIX)) problems.push(`${kind}:${id}: file '${file}' must live under pack/ and end in ${PAYLOAD_SUFFIX} (cargo, never an auto-loaded name)`);
+      out.push({ kind, id, file, why: str4(v, "why"), provenance: str4(v, "provenance") });
+    }
+    return out;
+  };
+  m.rules = fileItems("rules", "rule");
+  m.agents = fileItems("agents", "agent");
+  const skills = doc["skills"];
+  if (skills !== void 0) {
+    if (!Array.isArray(skills)) problems.push("skills must be a list");
+    else {
+      for (const v of skills) {
+        if (!isObj5(v)) {
+          problems.push("skills: an item must be an object");
+          continue;
+        }
+        const id = str4(v, "id");
+        const dir = str4(v, "dir");
+        if (!ID_RE.test(id)) {
+          problems.push(`skills: id '${id}' must be lower-case letters, digits and dashes`);
+          continue;
+        }
+        if (ids.has(`skill:${id}`)) {
+          problems.push(`skills: skill:${id} is listed twice`);
+          continue;
+        }
+        ids.add(`skill:${id}`);
+        if (!dir.startsWith("pack/")) problems.push(`skill:${id}: dir '${dir}' must live under pack/`);
+        m.skills.push({ kind: "skill", id, dir: dir.replace(/\/+$/, ""), why: str4(v, "why"), provenance: str4(v, "provenance") });
+      }
+    }
+  }
+  const walls = doc["walls"];
+  if (walls !== void 0) {
+    if (!Array.isArray(walls)) problems.push("walls must be a list");
+    else {
+      for (const v of walls) {
+        const r = parseWall(v);
+        if ("problem" in r) {
+          problems.push(r.problem);
+          continue;
+        }
+        if (ids.has(`wall:${r.wall.id}`)) {
+          problems.push(`walls: wall:${r.wall.id} is listed twice`);
+          continue;
+        }
+        ids.add(`wall:${r.wall.id}`);
+        for (const p of [...r.wall.command, ...r.wall.path]) {
+          const t = translateEre(p);
+          if (!t.ok) problems.push(`wall:${r.wall.id}: pattern will not compile (${t.kind}: ${t.reason}): ${p}`);
+        }
+        m.walls.push(r.wall);
+      }
+    }
+  }
+  const allow = doc["allow"];
+  if (allow !== void 0) {
+    if (!Array.isArray(allow) || !allow.every((a) => typeof a === "string")) problems.push("allow must be a list of permission rules (strings)");
+    else m.allow = allow;
+  }
+  if (isObj5(doc["accept"])) m.accept = { policy: str4(doc["accept"], "policy") };
+  problems.push(...baseWallProblems(m));
+  return { manifest: m, problems };
+}
+var BASE_WALLS2 = [...BASE_WALL_NAMES, "session-guard", "org-walls"];
+var BASE_MACHINERY = new RegExp(
+  `\\.claude[/\\\\](dist|scripts|schemas|hooks)|project-walls\\.conf|${BASE_WALL_NAMES.join("|")}|session-guard\\.mjs|DEPLOYED|ORG\\.json`
+);
+function baseWallProblems(m) {
+  const out = [];
+  for (const w of m.walls) {
+    if (BASE_WALLS2.includes(w.id)) out.push(`wall:${w.id} names a base wall \u2014 an organization adds walls and never alters the ${WALL_COUNT} base walls (D-S072, David 2026-10-21); give it its own id`);
+  }
+  for (const a of m.allow) {
+    if (BASE_MACHINERY.test(a)) out.push(`allow rule '${a}' reaches the harness machinery that runs the base walls \u2014 an organization may not loosen a base wall by permission; drop it`);
+  }
+  for (const it of sourceItems(m)) {
+    if (BASE_WALLS2.includes(it.id)) out.push(`${itemKey(it)} is named after a base wall; an org item never shadows one`);
+  }
+  return out;
+}
+function emptyManifest() {
+  return { schema: ORG_SCHEMA, name: "", version: "", rules: [], skills: [], agents: [], walls: [], allow: [], accept: { policy: "" } };
+}
+function sourceItems(m) {
+  return [...m.rules, ...m.skills, ...m.agents];
+}
+function itemKey(it) {
+  return `${it.kind}:${it.id}`;
+}
+function landingOf(org, it) {
+  const base = `org-${org}-${it.id}`;
+  if (it.kind === "rule") return `.claude/rules/${base}.md`;
+  if (it.kind === "agent") return `.claude/agents/${base}.md`;
+  return `.claude/skills/${base}`;
+}
+function liveName(name) {
+  return name.endsWith(PAYLOAD_SUFFIX) ? name.slice(0, -PAYLOAD_SUFFIX.length) : name;
+}
+function packFiles(packDir, m) {
+  const out = [];
+  for (const it of sourceItems(m)) {
+    const key = itemKey(it);
+    if (it.kind === "skill") {
+      const base = join25(packDir, it.dir);
+      if (!isDir(base)) continue;
+      const land = landingOf(m.name, it);
+      for (const abs of walkLikeFind(base)) {
+        const rel2 = abs.slice(base.length + 1);
+        const name = rel2.slice(rel2.lastIndexOf("/") + 1);
+        if (name.startsWith(".")) continue;
+        const dir = rel2.includes("/") ? rel2.slice(0, rel2.lastIndexOf("/") + 1) : "";
+        out.push({ item: key, src: abs, dest: `${land}/${dir}${liveName(name)}` });
+      }
+      continue;
+    }
+    out.push({ item: key, src: join25(packDir, it.file), dest: landingOf(m.name, it) });
+  }
+  return out;
+}
+var LOADED_NAMES = /* @__PURE__ */ new Set(["CLAUDE.md", "AGENTS.md", "GEMINI.md", "SKILL.md", ".cursorrules", ".windsurfrules", "copilot-instructions.md"]);
+var LOADED_DIRS = [".claude", ".cursor", ".codex", ".copilot", ".github", ".agent-control"];
+var CARVE_OUT = /not\s+subject\s+to\s+the\s+harness/i;
+var CARVE_OUT_SCOPE = /a harnessed repo \(one carrying \.claude\/DEPLOYED\) is governed by its harness/;
+var IMPERSONATION = [/--as\s+david\b/i, /\bas David\b/, /\bUser token\b/i, /\bDavid'?s (identity|token|login|session|credentials?)\b/i, /\b(log in|sign in|act|authenticate) as (David|the operator)\b/i];
+var PROHIBITION = /\b(never|not|no|nobody|without)\b[^.;\n]{0,48}?(--as\s+david\b|\bas David\b|\bUser token\b|\bDavid'?s (identity|token|login|session|credentials?)\b)/gi;
+function identityProblems(text2) {
+  const instructive = text2.replace(PROHIBITION, "");
+  const phrases = IMPERSONATION.map((re) => instructive.match(re)?.[0] ?? null).filter((m) => m !== null);
+  if (phrases.length === 0) return [];
+  return [`tells a session to act as David (${[...new Set(phrases)].join("; ")}) \u2014 an agent acts as its own identity (its session name or Phylactery agent name) and names the permission the act needs, never a person`];
+}
+function carriesUnscopedCarveOut(text2) {
+  return CARVE_OUT.test(text2) && !CARVE_OUT_SCOPE.test(text2);
+}
+function packLayoutProblems(dir) {
+  if (!isDir(dir)) return [];
+  const out = [];
+  for (const abs of walkLikeFind(dir)) {
+    const rel2 = abs.slice(dir.length + 1);
+    const segs = rel2.split("/");
+    const name = segs[segs.length - 1];
+    const hit = segs.slice(0, -1).find((s2) => LOADED_DIRS.includes(s2));
+    if (hit !== void 0) {
+      out.push(`${rel2}: under ${hit}/, a directory an agent tool loads`);
+      continue;
+    }
+    if (LOADED_NAMES.has(name)) out.push(`${rel2}: named ${name}, which an agent tool reads as instructions \u2014 stage it as ${name}${PAYLOAD_SUFFIX}`);
+    else if (name.endsWith(".mdc")) out.push(`${rel2}: a .mdc file is a Cursor rule`);
+    else if (segs[0] === "pack" && !name.endsWith(PAYLOAD_SUFFIX) && !name.startsWith(".")) out.push(`${rel2}: a file under pack/ must end in ${PAYLOAD_SUFFIX}`);
+    let text2 = "";
+    try {
+      text2 = readFileSync21(abs, "utf8");
+    } catch {
+      continue;
+    }
+    for (const ip of identityProblems(text2)) out.push(`${rel2}: ${ip}`);
+    if (carriesUnscopedCarveOut(text2)) {
+      out.push(`${rel2}: says sessions are "not subject to the harness" without its scope \u2014 that sentence belongs to /srv/apps/scrumux alone; a harnessed repo (one carrying .claude/DEPLOYED) is governed by its harness wherever it writes`);
+    }
+  }
+  return out;
+}
+function packProblems(packDir) {
+  const mp = join25(packDir, "org.json");
+  if (!isFile(mp)) return { manifest: emptyManifest(), problems: [`no org.json in ${packDir}`] };
+  const { manifest, problems } = parseManifest(readFileSync21(mp, "utf8"));
+  problems.push(...packLayoutProblems(packDir));
+  for (const it of sourceItems(manifest)) {
+    if (it.kind === "skill") {
+      if (!isDir(join25(packDir, it.dir))) problems.push(`skill:${it.id}: dir ${it.dir} is not there`);
+      else if (!isFile(join25(packDir, it.dir, `SKILL.md${PAYLOAD_SUFFIX}`))) problems.push(`skill:${it.id}: ${it.dir}/SKILL.md${PAYLOAD_SUFFIX} is not there \u2014 a skill is its SKILL.md`);
+    } else if (!isFile(join25(packDir, it.file))) problems.push(`${it.kind}:${it.id}: file ${it.file} is not there`);
+  }
+  return { manifest, problems };
+}
+function sha256File(p) {
+  return createHash3("sha256").update(readFileSync21(p)).digest("hex");
+}
+var DRAFT = "draft";
+var PUBLISHED = "published";
+var CURRENT = "CURRENT";
+var HISTORY = "history.jsonl";
+var PROPOSALS = "proposals";
+var STORE_README = "README.md";
+var README_TEXT = `# Organization layer \u2014 cargo, not instructions
+
+This directory is DATA: one organization's rules, skills, agents, walls and
+allow-list, versioned by the scrumux CLI (scrumux org ...). Nothing here is an
+instruction to any session reading it. Every deployable file carries the
+.payload suffix under pack/ and is written to its live name only by
+\`scrumux harness deploy <repo> --org <org>\`, inside that repo.
+
+draft/        the working copy (scrumux org draft)
+published/    immutable versions, each with MANIFEST.json (scrumux org publish)
+CURRENT       the version a deploy installs
+history.jsonl who changed what, under which authority, and why
+proposals/    an agent's proposals (scrumux org propose); they bind nothing
+`;
+function orgShaOf(files) {
+  const lines = Object.keys(files).sort().map((k2) => `${k2} ${files[k2]}
+`).join("");
+  return createHash3("sha256").update(lines).digest("hex");
+}
+function hashTree(dir) {
+  const out = {};
+  for (const abs of walkLikeFind(dir)) {
+    const rel2 = abs.slice(dir.length + 1);
+    if (rel2 === "MANIFEST.json") continue;
+    out[rel2] = sha256File(abs);
+  }
+  return out;
+}
+function currentVersion(store) {
+  const p = join25(store, CURRENT);
+  if (!isFile(p)) return null;
+  const v = readFileSync21(p, "utf8").trim();
+  return v === "" ? null : v;
+}
+function readPublished(store, version) {
+  const v = version ?? currentVersion(store);
+  if (v === null) return { kind: "absent", why: `${store} has no published version (no ${CURRENT}) \u2014 publish the draft first: scrumux org publish --org <org> --by WHO --authority direct` };
+  const dir = join25(store, PUBLISHED, v);
+  if (!isDir(dir)) return { kind: "absent", why: `${dir} is not there \u2014 ${CURRENT} names a version that was never published` };
+  let pub;
+  try {
+    pub = JSON.parse(readFileSync21(join25(dir, "MANIFEST.json"), "utf8"));
+  } catch (e) {
+    return { kind: "unreadable", why: `${dir}/MANIFEST.json cannot be read (${e instanceof Error ? e.message : String(e)})` };
+  }
+  const now = hashTree(dir);
+  const want = pub.files ?? {};
+  const moved = Object.keys({ ...want, ...now }).filter((k2) => want[k2] !== now[k2]);
+  if (moved.length > 0) return { kind: "unreadable", why: `published version ${v} no longer matches its MANIFEST.json (${moved.slice(0, 3).join(", ")}${moved.length > 3 ? ", \u2026" : ""}) \u2014 a published version is immutable; restore it or publish a new version` };
+  const { manifest, problems } = parseManifest(readFileSync21(join25(dir, "org.json"), "utf8"));
+  if (problems.length > 0) return { kind: "unreadable", why: `published version ${v} has a manifest that does not pass: ${problems[0]}` };
+  return { kind: "ok", dir, manifest, published: pub };
+}
+function appendHistory(store, row) {
+  mkdirSync6(store, { recursive: true });
+  appendFileSync(join25(store, HISTORY), `${JSON.stringify(row)}
+`);
+}
+function readHistory(store) {
+  const p = join25(store, HISTORY);
+  if (!isFile(p)) return [];
+  const out = [];
+  for (const line of readFileSync21(p, "utf8").split("\n")) {
+    if (line.trim() === "") continue;
+    try {
+      const r = JSON.parse(line);
+      out.push({ at: r.at ?? "", act: r.act ?? "", by: r.by ?? "", authority: r.authority ?? "", why: r.why ?? "", before: r.before ?? null, after: r.after ?? null, detail: r.detail ?? "" });
+    } catch {
+      out.push({ at: "", act: "unreadable", by: "", authority: "", why: "", before: null, after: null, detail: line });
+    }
+  }
+  return out;
+}
+function nextProposalId(store) {
+  const dir = join25(store, PROPOSALS);
+  let max = 0;
+  if (isDir(dir)) {
+    for (const n of readdirSync4(dir)) {
+      const m = /^OP-(\d{4})\.json$/.exec(n);
+      if (m !== null) max = Math.max(max, Number(m[1]));
+    }
+  }
+  return `OP-${String(max + 1).padStart(4, "0")}`;
+}
+function writeProposal(store, p) {
+  const dir = join25(store, PROPOSALS);
+  mkdirSync6(dir, { recursive: true });
+  const path = join25(dir, `${p.id}.json`);
+  writeFileSync10(path, `${JSON.stringify(p, null, 2)}
+`);
+  return path;
+}
+function readProposals(store) {
+  const dir = join25(store, PROPOSALS);
+  if (!isDir(dir)) return [];
+  const out = [];
+  for (const n of readdirSync4(dir).sort()) {
+    if (!/^OP-\d{4}\.json$/.test(n)) continue;
+    try {
+      out.push(JSON.parse(readFileSync21(join25(dir, n), "utf8")));
+    } catch {
+    }
+  }
+  return out;
+}
+function ensureReadme(store) {
+  mkdirSync6(store, { recursive: true });
+  const p = join25(store, STORE_README);
+  if (!existsSync13(p)) writeFileSync10(p, README_TEXT);
+}
+
+// src/nouns/org/lane.ts
+var ORG_BUNDLE = ".claude/dist/org-walls.mjs";
+function chainsFor(walls) {
+  const chains = /* @__PURE__ */ new Set(["Bash|PowerShell", "Edit|Write|NotebookEdit"]);
+  for (const w of walls) if (w.tools.includes("Read")) chains.add("Read");
+  return ["Bash|PowerShell", "Read", "Edit|Write|NotebookEdit"].filter((c) => chains.has(c));
+}
+function planOrgInstall(target, packDir, m, payloadList) {
+  const base = new Set(payloadList);
+  const rows5 = [];
+  for (const f of packFiles(packDir, m)) {
+    if (base.has(f.dest)) {
+      rows5.push({ ...f, status: "SKIP", why: "the base payload claims this path; base wins a collision" });
+      continue;
+    }
+    const dst = join26(target, f.dest);
+    if (!isFile(dst)) rows5.push({ ...f, status: "CREATE", why: "" });
+    else if (readFileSync22(f.src).equals(readFileSync22(dst))) rows5.push({ ...f, status: "UNCHANGED", why: "" });
+    else rows5.push({ ...f, status: "UPDATE", why: "" });
+  }
+  return rows5;
+}
+function cpP(src, dst) {
+  copyFileSync2(src, dst);
+  const st = statSync11(src);
+  chmodSync6(dst, st.mode & 4095);
+  utimesSync2(dst, st.atime, st.mtime);
+}
+function installedText(m, pub, rows5, today, store) {
+  const files = {};
+  for (const r of rows5) if (r.status !== "SKIP") files[r.dest] = sha256File(r.src);
+  const items = sourceItems(m).map((it) => {
+    const land = landingOf(m.name, it);
+    const sha = it.kind === "skill" ? files[`${land}/SKILL.md`] ?? "" : files[land] ?? "";
+    return { kind: it.kind, id: it.id, path: land, sha256: sha, why: it.why, provenance: it.provenance };
+  });
+  const doc = {
+    schema: m.schema,
+    name: m.name,
+    version: m.version,
+    org_sha: pub.org_sha,
+    installed_at: today,
+    source: { store, published_at: pub.published_at, by: pub.by, authority: pub.authority },
+    chains: chainsFor(m.walls),
+    walls: m.walls,
+    allow: m.allow,
+    items,
+    files
+  };
+  return jqFormat(doc);
+}
+function orgFilesLane(h, payloadList, org, version) {
+  const { cli, target } = h;
+  if (org === null) return carryOrg(h);
+  let store;
+  try {
+    store = storeOf(h.ctx.env, org);
+  } catch (e) {
+    return cli.die(`--org: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const pub = readPublished(store, version);
+  if (pub.kind !== "ok") return cli.die(`--org ${org}: ${pub.why}`);
+  const m = pub.manifest;
+  if (m.name !== org) cli.die(`--org ${org}: the published manifest names '${m.name}' \u2014 a store directory and its manifest must agree`);
+  const rows5 = planOrgInstall(target, pub.dir, m, payloadList);
+  let created = 0;
+  let updated = 0;
+  let unchanged = 0;
+  const claimed = [];
+  for (const r of rows5) {
+    if (r.status === "SKIP") {
+      item(h, r.dest, "SKIPPED", `${r.item}: ${r.why}`);
+      continue;
+    }
+    claimed.push(r.dest);
+    if (r.status === "UNCHANGED") {
+      item(h, r.dest, "UNCHANGED");
+      unchanged += 1;
+      continue;
+    }
+    try {
+      mkdirSync7(dirname9(join26(target, r.dest)), { recursive: true });
+      cpP(r.src, join26(target, r.dest));
+    } catch {
+      cli.die(`cannot install ${r.dest} into ${target} \u2014 check the target's permissions`);
+    }
+    if (r.status === "CREATE") {
+      item(h, r.dest, "CREATED", `${r.item} (org ${m.name} ${m.version})`);
+      created += 1;
+    } else {
+      item(h, r.dest, "UPDATED", `${r.item} (org ${m.name} ${m.version})`);
+      updated += 1;
+    }
+  }
+  const bundleSrc = join26(h.srcClaude, "dist", "org-walls.mjs");
+  if (!isFile(bundleSrc)) cli.die(`--org ${org}: this harness checkout has no ${bundleSrc} \u2014 run npm run build in it; a deploy that wired a hook to a bundle that is not there would leave every org wall silently open`);
+  const bundleDst = join26(target, ORG_BUNDLE);
+  claimed.push(ORG_BUNDLE);
+  if (!isFile(bundleDst)) {
+    mkdirSync7(dirname9(bundleDst), { recursive: true });
+    cpP(bundleSrc, bundleDst);
+    item(h, ORG_BUNDLE, "CREATED", "the organization walls, one bundle driven by .claude/ORG.json");
+    created += 1;
+  } else if (readFileSync22(bundleSrc).equals(readFileSync22(bundleDst))) {
+    item(h, ORG_BUNDLE, "UNCHANGED");
+    unchanged += 1;
+  } else {
+    cpP(bundleSrc, bundleDst);
+    item(h, ORG_BUNDLE, "UPDATED");
+    updated += 1;
+  }
+  const text2 = installedText(m, pub.published, rows5, h.ctx.today, store);
+  const orgPath = join26(target, ORG_FILE);
+  claimed.push(ORG_FILE);
+  const prev = isFile(orgPath) ? readFileSync22(orgPath, "utf8") : null;
+  if (prev === text2) {
+    item(h, ORG_FILE, "UNCHANGED");
+    unchanged += 1;
+  } else {
+    try {
+      mkdirSync7(dirname9(orgPath), { recursive: true });
+      writeFileSync11(orgPath, text2);
+    } catch {
+      cli.die(`cannot write ${orgPath} \u2014 check the target's permissions`);
+    }
+    item(h, ORG_FILE, prev === null ? "CREATED" : "UPDATED", `organization ${m.name} ${m.version} (${pub.published.org_sha.slice(0, 12)}): ${m.walls.length} wall(s), ${m.allow.length} allow rule(s), ${sourceItems(m).length} item(s)`);
+    if (prev === null) created += 1;
+    else updated += 1;
+  }
+  return { name: m.name, version: m.version, org_sha: pub.published.org_sha, claimed, walls: m.walls, allow: m.allow, created, updated, unchanged, carried: false, stamp: { org_name: m.name, org_version: m.version, org_sha: pub.published.org_sha } };
+}
+function carryOrg(h) {
+  const r = readInstalled(h.target);
+  if (r.kind === "absent") return null;
+  if (r.kind === "unreadable") {
+    const prev = previousOrgPaths(h.target);
+    item(h, ORG_FILE, "KEPT", `cannot be read (${r.error}) \u2014 left alone with the ${prev.claimed.length} file(s) the previous manifest claims for it; scrumux org verify ${h.target} names the fix, and harness deploy ${h.target} --org <org> rewrites it`);
+    return { name: "unknown", version: "unknown", org_sha: "", claimed: prev.claimed, walls: [], allow: [], created: 0, updated: 0, unchanged: 0, carried: true, stamp: prev.stamp };
+  }
+  const o = r.org;
+  const claimed = [...Object.keys(o.files), ORG_BUNDLE, ORG_FILE];
+  item(h, ORG_FILE, "KEPT", `organization ${o.name} ${o.version} stays as installed (${Object.keys(o.files).length} file(s)); re-run with --org ${o.name} to update it`);
+  return { name: o.name, version: o.version, org_sha: o.org_sha, claimed, walls: o.walls, allow: o.allow, created: 0, updated: 0, unchanged: 0, carried: true, stamp: { org_name: o.name, org_version: o.version, org_sha: o.org_sha } };
+}
+function isOrgPath(p) {
+  return p === ORG_BUNDLE || p === ORG_FILE || /^\.claude\/(rules|skills|agents)\/org-[a-z0-9-]+/.test(p);
+}
+function previousOrgPaths(target) {
+  let doc;
+  try {
+    doc = JSON.parse(readFileSync22(join26(target, ".claude/DEPLOYED"), "utf8"));
+  } catch {
+    return { claimed: [], stamp: null };
+  }
+  const files = doc["files"];
+  const claimed = typeof files === "object" && files !== null && !Array.isArray(files) ? Object.keys(files).filter(isOrgPath) : [];
+  const stamp = typeof doc["org_name"] === "string" ? { org_name: doc["org_name"], org_version: doc["org_version"] ?? "unknown", org_sha: doc["org_sha"] ?? "", ...Array.isArray(doc["org_allow"]) ? { org_allow: doc["org_allow"] } : {} } : null;
+  return { claimed, stamp };
+}
+function unionOrgHooks(cli, tset, walls) {
+  let doc;
+  try {
+    doc = parsePreservingNumbers(readFileSync22(tset, "utf8"));
+  } catch {
+    return 0;
+  }
+  if (typeof doc !== "object" || doc === null || Array.isArray(doc)) return 0;
+  const obj6 = doc;
+  const hooksVal = obj6["hooks"];
+  const hooks = typeof hooksVal === "object" && hooksVal !== null && !Array.isArray(hooksVal) ? hooksVal : {};
+  obj6["hooks"] = hooks;
+  const pre = Array.isArray(hooks["PreToolUse"]) ? hooks["PreToolUse"] : [];
+  hooks["PreToolUse"] = pre;
+  const entry = () => ({ type: "command", command: "node", args: [`\${CLAUDE_PROJECT_DIR}/${ORG_BUNDLE}`] });
+  const namesBundle = (hk) => {
+    if (typeof hk !== "object" || hk === null || Array.isArray(hk)) return false;
+    const args = hk["args"];
+    return Array.isArray(args) && typeof args[0] === "string" && args[0].endsWith("org-walls.mjs");
+  };
+  let added = 0;
+  for (const chain of chainsFor(walls)) {
+    const found = pre.find((e) => typeof e === "object" && e !== null && !Array.isArray(e) && e["matcher"] === chain);
+    if (found === void 0) {
+      pre.push({ matcher: chain, hooks: [entry()] });
+      added += 1;
+      continue;
+    }
+    const fo = found;
+    const list = Array.isArray(fo["hooks"]) ? fo["hooks"] : [];
+    fo["hooks"] = list;
+    if (list.some(namesBundle)) continue;
+    list.push(entry());
+    added += 1;
+  }
+  if (added === 0) return 0;
+  const tmp = `${tset}.tmp.${process.pid}`;
+  try {
+    writeFileSync11(tmp, jqFormat(doc));
+  } catch {
+    cli.die("cannot stage settings.json merge");
+  }
+  try {
+    chmodSync6(tmp, 384);
+  } catch {
+  }
+  try {
+    renameSync6(tmp, tset);
+  } catch {
+    cli.die(`cannot write ${tset} \u2014 check the target's permissions`);
+  }
+  return added;
+}
+function orgSettingsLane(h, tset, lane) {
+  if (!isFile(tset)) return false;
+  let changed = false;
+  const nh = unionOrgHooks(h.cli, tset, lane.walls);
+  if (nh > 0) {
+    item(h, ".claude/settings.json", "UPDATED", `org walls wired: ${nh} hook entr${nh === 1 ? "y" : "ies"} for ${lane.name} (${chainsFor(lane.walls).join(", ")}); the base chains untouched`);
+    changed = true;
+  }
+  let present = [];
+  try {
+    present = allowOf(parsePreservingNumbers(readFileSync22(tset, "utf8"))).map((x) => jqFormat(x));
+  } catch {
+    present = [];
+  }
+  const added = lane.allow.filter((r) => !present.includes(jqFormat(r)));
+  const na = unionAllow(h.cli, tset, [...lane.allow]);
+  if (na > 0) {
+    item(h, ".claude/settings.json", "UPDATED", `permissions.allow unioned: ${na} org rule(s) from ${lane.name} appended`);
+    changed = true;
+  }
+  const prevAdded = lane.stamp !== null && Array.isArray(lane.stamp["org_allow"]) ? lane.stamp["org_allow"].filter((x) => typeof x === "string") : [];
+  const orgAllow = [.../* @__PURE__ */ new Set([...prevAdded, ...added])];
+  if (lane.stamp !== null && orgAllow.length > 0) lane.stamp = { ...lane.stamp, org_allow: orgAllow };
+  return changed;
+}
+function orgSummary(lane) {
+  if (lane === null) return "";
+  if (lane.carried) return ` Organization layer ${lane.name} ${lane.version} kept as installed.`;
+  return ` Organization layer ${lane.name} ${lane.version} installed (${lane.claimed.length} file(s) claimed).`;
+}
+function orgStamp(lane) {
+  return lane === null ? null : lane.stamp;
+}
+
+// src/nouns/repo-gov/journal.ts
+import { existsSync as existsSync14, readFileSync as readFileSync23 } from "node:fs";
+import { join as join27 } from "node:path";
+var REPO_GOV_JOURNAL = "governance/repo-governance.json";
+var REPO_GOV_TEMPLATE = '{"entries": []}';
+var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var str5 = (o, k2) => typeof o[k2] === "string" ? o[k2] : null;
+function readJournal2(root) {
+  const p = join27(root, REPO_GOV_JOURNAL);
+  if (!existsSync14(p)) return { kind: "absent" };
+  let doc;
+  try {
+    doc = JSON.parse(readFileSync23(p, "utf8"));
+  } catch (e) {
+    return { kind: "unreadable", error: `does not parse: ${e.message}` };
+  }
+  if (!isObj6(doc) || !Array.isArray(doc["entries"])) return { kind: "unreadable", error: "carries no entries array" };
+  const entries = [];
+  for (const e of doc["entries"]) {
+    if (!isObj6(e)) continue;
+    const id = str5(e, "id");
+    const kind = str5(e, "kind");
+    if (id === null || kind !== "publish" && kind !== "propose" && kind !== "reject" && kind !== "remove") continue;
+    entries.push({
+      id,
+      kind,
+      text: str5(e, "text"),
+      sha256: str5(e, "sha256"),
+      by: str5(e, "by") ?? "",
+      authority: str5(e, "authority"),
+      note: str5(e, "note"),
+      why: str5(e, "why"),
+      reason: str5(e, "reason"),
+      proposal: str5(e, "proposal"),
+      from: str5(e, "from"),
+      date: str5(e, "date") ?? ""
+    });
+  }
+  return { kind: "ok", entries };
+}
+function currentPublish(entries) {
+  const last = [...entries].reverse().find((e) => e.kind === "publish" || e.kind === "remove") ?? null;
+  return last !== null && last.kind === "publish" ? last : null;
+}
+function proposalsOf(entries) {
+  return entries.filter((e) => e.kind === "propose").map((p) => {
+    const accepted2 = entries.find((e) => e.kind === "publish" && e.from === p.id);
+    const rejected = entries.find((e) => e.kind === "reject" && e.proposal === p.id);
+    if (accepted2 !== void 0) return { ...p, status: "accepted", outcome: accepted2.id };
+    if (rejected !== void 0) return { ...p, status: "rejected", outcome: rejected.id };
+    return { ...p, status: "proposed", outcome: null };
+  });
+}
+var MACHINERY = [
+  { re: /\.claude[/\\](dist|scripts|hooks)\b/, what: "the harness machinery directories" },
+  { re: /\bsettings\.json\b/, what: "settings.json, where the hook chains are wired" },
+  { re: /\bproject-walls\.conf\b/, what: "project-walls.conf, the base walls' own pathway" },
+  { re: /\bORG\.json\b/, what: ".claude/ORG.json, the installed organization layer" }
+];
+function loosenProblems(text2, root) {
+  const out = [];
+  for (const w of BASE_WALLS2) {
+    if (new RegExp(`(^|[^a-z0-9-])${w}([^a-z0-9-]|$)`, "i").test(text2)) {
+      out.push(`names the base wall ${w} \u2014 the repo tier speaks for its own repo and never for a base wall (D-S072: add only); a base wall is changed upstream, in the harness, or not at all`);
+    }
+  }
+  const inst = readInstalled(root);
+  if (inst.kind === "ok") {
+    for (const w of inst.org.walls) {
+      if (new RegExp(`(^|[^a-z0-9-])${w.id}([^a-z0-9-]|$)`, "i").test(text2)) {
+        out.push(`names the organization wall ${w.id} \u2014 a repo never loosens an org wall in its addendum; a deviation is recorded with a reason: scrumux org accept ${root} wall:${w.id} --reason R --by WHO --authority A`);
+      }
+    }
+  }
+  for (const m of MACHINERY) if (m.re.test(text2)) out.push(`names ${m.what} \u2014 the addendum may not direct a session at base or organization machinery`);
+  if (carriesUnscopedCarveOut(text2)) {
+    out.push(`says sessions are "not subject to the harness" without its scope \u2014 if the super-repo's carve-out must be mentioned, say that a harnessed repo (one carrying .claude/DEPLOYED) is governed by its harness wherever it writes`);
+  }
+  return out;
+}
+function adviseProblems(text2) {
+  const out = [];
+  const re = /\b(ignore|bypass|skip|disable|turn off|work around|circumvent|evade)\b[^.\n]{0,60}\b(hooks?|walls?|harness|guards?|gates?|permission prompts?)\b/gi;
+  for (const m of text2.matchAll(re)) out.push(`"${m[0].trim()}" reads as telling a session to get past a wall \u2014 prose cannot change one, and a session that reads this will be judged on what the ledger shows; say what the repo requires instead`);
+  return out;
+}
+function measure(root) {
+  const j = readJournal2(root);
+  let addendum = null;
+  const cp = join27(root, "CLAUDE.md");
+  if (existsSync14(cp)) {
+    const split = splitAddendum(readFileSync23(cp));
+    if (split.text !== null) addendum = { text: split.text, sha256: addendumSha(split.text) };
+  }
+  if (j.kind === "unreadable") return { state: "broken", current: null, addendum, detail: `${REPO_GOV_JOURNAL} ${j.error} \u2014 the record of what was published cannot be read; restore it from git` };
+  const current = j.kind === "ok" ? currentPublish(j.entries) : null;
+  if (current === null && addendum === null) return { state: "none", current: null, addendum: null, detail: "no repo governance: nothing published and CLAUDE.md carries no addendum" };
+  if (current === null) return { state: "unrecorded", current: null, addendum, detail: `CLAUDE.md carries a repo governance addendum (${addendum.sha256.slice(0, 12)}) that no publish recorded \u2014 variance; adopt it with scrumux repo-gov publish ${root} --file F --by WHO --authority A, or remove the section` };
+  if (addendum === null) return { state: "missing", current, addendum: null, detail: `${current.id} is published but CLAUDE.md carries no addendum section \u2014 variance; scrumux repo-gov publish restores it` };
+  if (addendum.sha256 === current.sha256) return { state: "current", current, addendum, detail: `CLAUDE.md carries ${current.id} (${current.sha256?.slice(0, 12)}), published ${current.date} by ${current.by}` };
+  return { state: "drift", current, addendum, detail: `the addendum in CLAUDE.md (${addendum.sha256.slice(0, 12)}) differs from ${current.id} (${current.sha256?.slice(0, 12)}) \u2014 a hand edit outside the verbs; variance, never a failure. Adopt it (repo-gov publish --file) or restore it (repo-gov publish from ${current.id})` };
+}
+function repoGovStamp(root) {
+  const m = measure(root);
+  if (m.addendum === null) return null;
+  return { repo_governance: { id: m.current?.id ?? null, sha256: m.addendum.sha256, state: m.state, owner: "repo" } };
+}
+
+// src/nouns/harness/deploy.ts
+function cpP2(src, dst) {
+  copyFileSync3(src, dst);
+  const st = statSync12(src);
+  chmodSync7(dst, (st.mode & 73) !== 0 ? 493 : 420);
+  utimesSync3(dst, st.atime, st.mtime);
+}
+function bytesEqual(a, b) {
+  try {
+    return readFileSync24(a).equals(readFileSync24(b));
+  } catch {
+    return false;
+  }
+}
+function parseJson(path) {
+  try {
+    return JSON.parse(readFileSync24(path, "utf8"));
+  } catch {
+    return void 0;
+  }
+}
+var PWALL_TEMPLATE = `# This repo's wall rules. The one place to extend the refusal layer.
+#
+#   refuse <extended-regex> | why this repo refuses it
+#   allow  <extended-regex> | why this repo permits it
+#
+# \`refuse\` adds a pattern to every wall \u2014 what only this repo knows is
+# dangerous here. \`allow\` exempts a command the built-in walls would stop,
+# for work that legitimately needs it.
+#
+# Both need a reason after the pipe. A rule with no reason is ignored:
+# an exemption nobody can read is an exemption nobody can audit.
+# \`allow\` wins over \`refuse\`. Lines starting with # are comments.
+#
+# Examples:
+#   refuse  flyctl deploy      | production is released by CI, never from a session
+#   allow   api\\.openai\\.com   | this coursework calls the provider directly on purpose
+`;
+var PSTD_TEMPLATE = `---
+name: project-standards
+paths: ["**"]
+skills: []
+scripts: []
+---
+# Rule: this repo's own standards
+
+Yours to write. Nothing here is enforced by the harness: no gate reads
+this file, no check fails on it, and no exit code depends on its
+contents. It is context an agent is given, not a wall it hits.
+
+Note on \`paths\`: the CLI loads ALL rules every session regardless of
+what \`paths\` declares (D-0008; path-scoping is tracked as I-0001), so
+write these as standards that are always in context.
+
+To give a standard teeth of your own, name a skill in \`skills:\` and the
+scripts it calls in \`scripts:\` \u2014 the harness checks those pointers
+resolve to real files, and nothing more.
+
+An example, commented out so a fresh repo validates with no dangling
+pointers:
+
+    # ---
+    # name: project-standards
+    # paths: ["**"]
+    # skills: ["notebook-deps"]
+    # scripts: [".claude/scripts/check-deps"]
+    # ---
+    # ## Pinned dependencies
+    # The graded notebook runs against the versions in requirements.txt.
+    # Do not change them, and do not add imports the file does not pin.
+    # Before touching any cell that imports, run .claude/scripts/check-deps.
+`;
+function postInstall(ctx, argv, extraEnv = {}) {
+  const self = selfBundle(ctx.env);
+  if (self === null) {
+    return {
+      rc: 127,
+      combined: "",
+      note: " \u2014 and this process has no bundle path to re-run the check on, so the check did not run at all",
+      rerun: "scrumux"
+    };
+  }
+  const r = spawnCombinedWith(process.execPath, [self, ...argv], {
+    cwd: ctx.cwd,
+    env: { ...ctx.env, ...extraEnv },
+    // 64 MiB. `graph code build` reports a line per skipped language and can
+    // print a long parse-error list over a big tree, and Node's 1 MiB default
+    // truncates a child's stream while leaving its exit code intact -- a cut
+    // report that still reads as a verdict.
+    maxBuffer: 64 * 1024 * 1024
+  });
+  return { ...r, note: "", rerun: `${process.execPath} ${self}` };
+}
+function harnessDeploy(h, opts = {}) {
+  const { cli, ctx, target } = h;
+  cli.say(`=== HARNESS DEPLOY -> ${target} (${ctx.today}) ===`);
+  let created = 0;
+  let updated = 0;
+  let unchanged = 0;
+  const payloadList = allPayloadFiles(h.srcClaude, h.srcRoot);
+  for (const rel2 of payloadList) {
+    if (rel2 === "") continue;
+    const src = srcPathOf(rel2, h.srcClaude, h.srcRoot);
+    const dst = join28(target, rel2);
+    if (!isFile(dst)) {
+      try {
+        mkdirSync8(dirname10(dst), { recursive: true });
+      } catch {
+        cli.die(`cannot create ${dirname10(dst)} \u2014 check the target's permissions`);
+      }
+      try {
+        cpP2(src, dst);
+      } catch {
+        cli.die(`cannot install ${rel2} into ${target} \u2014 check the target's permissions`);
+      }
+      item(h, rel2, "CREATED");
+      created += 1;
+    } else if (bytesEqual(src, dst)) {
+      item(h, rel2, "UNCHANGED");
+      unchanged += 1;
+    } else {
+      try {
+        cpP2(src, dst);
+      } catch {
+        cli.die(`cannot update ${rel2} in ${target} \u2014 check the target's permissions`);
+      }
+      item(h, rel2, "UPDATED");
+      updated += 1;
+    }
+  }
+  const orgLane = orgFilesLane(h, payloadList, opts.org ?? null, opts.orgVersion ?? null);
+  if (orgLane !== null) {
+    h.claimed = orgLane.claimed;
+    created += orgLane.created;
+    updated += orgLane.updated;
+    unchanged += orgLane.unchanged;
+  }
+  const seq = runSequester(h, { dryRun: false, keep: [] });
+  const cst = applyConstitution(h, seq);
+  if (cst === "CREATED") created += 1;
+  else if (cst === "UPDATED") updated += 1;
+  else if (cst === "UNCHANGED") unchanged += 1;
+  const tset = join28(target, ".claude/settings.json");
+  let settingsTouched = false;
+  let wallsUnplaced = [];
+  if (!isFile(tset)) {
+    try {
+      mkdirSync8(join28(target, ".claude"), { recursive: true });
+    } catch {
+      cli.die(`cannot create ${target}/.claude \u2014 check the target's permissions`);
+    }
+    try {
+      cpP2(join28(h.srcClaude, "settings.json"), tset);
+    } catch {
+      cli.die(`cannot install .claude/settings.json into ${target} \u2014 check the target's permissions`);
+    }
+    item(h, ".claude/settings.json", "CREATED", "written verbatim at the repo ROOT, which is the only place Claude Code will resolve it");
+    created += 1;
+    settingsTouched = true;
+  } else {
+    const wallHooks = unionWallHooks(cli, tset, join28(h.srcClaude, "settings.json"));
+    wallsUnplaced = wallHooks.unplaced;
+    if (wallHooks.added.length > 0) {
+      const n = wallHooks.added.length;
+      item(h, ".claude/settings.json", "UPDATED", `base walls wired: ${n} hook entr${n === 1 ? "y" : "ies"} appended (${pairsText(wallHooks.added)}); the repo's own entries untouched`);
+      updated += 1;
+      settingsTouched = true;
+    }
+    let srcAllow = [];
+    try {
+      srcAllow = allowOf(JSON.parse(readFileSync24(join28(h.srcClaude, "settings.json"), "utf8")));
+    } catch {
+      srcAllow = [];
+    }
+    const newRules = unionAllow(cli, tset, srcAllow);
+    if (newRules > 0) {
+      item(h, ".claude/settings.json", "UPDATED", `permissions.allow unioned: ${newRules} canon rule(s) appended; the repo's own hooks and env untouched`);
+      if (!settingsTouched) {
+        updated += 1;
+        settingsTouched = true;
+      }
+    } else if (!settingsTouched) {
+      const mc = missingChains(parseJson(tset));
+      if (mc !== "") {
+        item(h, ".claude/settings.json", "UNCHANGED", `kept \u2014 nothing to union; hook chain(s) absent: ${mc}`);
+      } else {
+        item(h, ".claude/settings.json", "UNCHANGED", `kept \u2014 nothing to union; all ${HOOK_CHAIN_COUNT} hook chains present`);
+      }
+      unchanged += 1;
+    }
+  }
+  for (const seed of detectedToolSeeds(target)) {
+    const n = isFile(tset) ? unionAllow(cli, tset, [...seed.rules]) : 0;
+    if (n === 0) continue;
+    item(h, ".claude/settings.json", "SEEDED", `permissions.allow: ${seed.rules.join(" ")} for ${seed.manifest} (${n} appended) \u2014 a dispatched session has nobody to approve its build tool`);
+    if (!settingsTouched) {
+      updated += 1;
+      settingsTouched = true;
+    }
+  }
+  if (orgLane !== null && orgSettingsLane(h, tset, orgLane) && !settingsTouched) {
+    updated += 1;
+    settingsTouched = true;
+  }
+  for (const j of JOURNALS2) {
+    const jp = join28(target, "governance", j);
+    if (isFile(jp)) {
+      item(h, `governance/${j}`, "UNCHANGED");
+      unchanged += 1;
+      continue;
+    }
+    refusing(cli, () => {
+      ensureFile(jp, '{"entries": []}');
+    });
+    if (j === "repo-health.json") {
+      item(h, `governance/${j}`, "CREATED", "seeded empty \u2014 register this repo's checks with scrumux health add");
+    } else {
+      item(h, `governance/${j}`, "CREATED");
+    }
+    created += 1;
+  }
+  const seededList = [];
+  const seeded = (rel2) => {
+    seededList.push(rel2);
+  };
+  seeded("governance/enforcement-posture.md");
+  const pwallRel = ".claude/project-walls.conf";
+  seeded(pwallRel);
+  const pwall = join28(target, pwallRel);
+  if (isFile(pwall)) {
+    item(h, pwallRel, "UNCHANGED", "kept \u2014 a repo's own wall rules are never overwritten");
+    unchanged += 1;
+  } else {
+    try {
+      writeFileSync12(pwall, PWALL_TEMPLATE);
+    } catch {
+    }
+    item(h, pwallRel, "CREATED", "the one pathway for this repo's own wall rules");
+    created += 1;
+  }
+  const pstdRel = ".claude/rules/project-standards.md";
+  seeded(pstdRel);
+  const pstd = join28(target, pstdRel);
+  if (isFile(pstd)) {
+    item(h, pstdRel, "UNCHANGED", "kept \u2014 a repo's own standards are never overwritten");
+    unchanged += 1;
+  } else {
+    try {
+      mkdirSync8(join28(target, ".claude/rules"), { recursive: true });
+    } catch {
+      cli.die(`cannot create ${target}/.claude/rules \u2014 check the target's permissions`);
+    }
+    try {
+      writeFileSync12(pstd, PSTD_TEMPLATE);
+    } catch {
+    }
+    item(h, pstdRel, "CREATED", "empty template for this repo's own standards; advisory only, never overwritten");
+    created += 1;
+  }
+  const viewFiles = ["AI_LOG.MD", "DECISIONS.MD", "BACKLOG.MD", "governance/governance-graph.json", ".scrumux/events.jsonl", ".scratch/"];
+  const viewFilesStr = viewFiles.join(" ");
+  const ign = join28(target, ".gitignore");
+  const ignLines = isFile(ign) ? readFileSync24(ign, "utf8").split("\n") : null;
+  let ignAdd = "";
+  const ignAddList = [];
+  for (const vf of viewFiles) {
+    const re = new RegExp(`^/?${vf.replace(/\./g, "\\.")}[\\s]*$`);
+    if (ignLines !== null && ignLines.some((l) => re.test(l))) continue;
+    ignAdd += ` ${vf}`;
+    ignAddList.push(vf);
+  }
+  if (ignAdd === "") {
+    item(h, ".gitignore", "UNCHANGED", `kept \u2014 already ignores the generated views and scratch (${viewFilesStr})`);
+    unchanged += 1;
+  } else {
+    const ignExisted = ignLines !== null;
+    try {
+      if (ignExisted) {
+        const raw = readFileSync24(ign);
+        if (raw.length > 0 && raw[raw.length - 1] !== 10) appendFileSync2(ign, "\n");
+      }
+      let block = "";
+      if (ignExisted) block += "\n";
+      block += "# Written by scrumux, not by hand: the rendered views, the walls' event log and the session scratch directory.\n";
+      block += "# The JSON under governance/ is the source of truth; these are projections.\n";
+      for (const vf of ignAddList) block += `${vf}
+`;
+      appendFileSync2(ign, block);
+    } catch {
+      cli.die(`cannot write ${ign} \u2014 check the target's permissions`);
+    }
+    if (ignExisted) {
+      item(h, ".gitignore", "UPDATED", `appended${ignAdd} \u2014 scrumux writes them into the repo root (views render, the walls' event log, session scratch in .scratch/), and an untracked generated file reads as an uncommitted change`);
+      updated += 1;
+    } else {
+      item(h, ".gitignore", "CREATED", `ignoring${ignAdd} \u2014 scrumux writes them into the repo root (views render, the walls' event log, session scratch in .scratch/), and an untracked generated file reads as an uncommitted change`);
+      created += 1;
+    }
+  }
+  const cgPath = join28(target, "governance/code-graph.json");
+  const reuse = reusableIndex(target);
+  const cg = reuse.reuse ? null : postInstall(ctx, ["graph", "code", "build", "--repo", target]);
+  const cgout = cg === null ? "" : stripTrailingNewlines(cg.combined);
+  if (cg === null) {
+    cli.say(`  REUSED    governance/code-graph.json \u2014 committed and fresh (${reuse.reason})`);
+    check(h, "code-graph-built", true, `the committed code index in ${target} is fresh (${reuse.reason}), so it was reused rather than rebuilt; every scrumux graph code query there answers from it`);
+  } else if (cg.rc === 0) {
+    let cgNow = null;
+    try {
+      cgNow = readFileSync24(cgPath, "utf8");
+    } catch {
+      cgNow = null;
+    }
+    if (indexNeedsCommit(committedText(target, "governance/code-graph.json"), cgNow)) {
+      (h.wrote ??= []).push("governance/code-graph.json");
+    }
+    const first = (cgout.split("\n", 1)[0] ?? "").replace(/^graph code: /, "");
+    const parseLine = cgout.split("\n").find((l) => l.startsWith("parse errors in: ")) ?? "";
+    const partial = parseLine === "" ? "" : ` \u2014 ${parseLine}`;
+    cli.say(`  BUILT     governance/code-graph.json \u2014 ${first}${partial}`);
+    check(h, "code-graph-built", true, `the code index was built into ${target} from this checkout, so every scrumux graph code query there answers with no parser of its own${partial}${cg.note}`);
+  } else {
+    cli.say("  SKIPPED   governance/code-graph.json \u2014 not built");
+    check(h, "code-graph-built", false, `the code index was NOT built into ${target}: ${trNewlines(shHead(cgout, 2), " ")} \u2014 every scrumux graph code query there will say it has no index. Build it from any harness checkout that has the tree-sitter grammars: scrumux graph code build --repo ${target}${cg.note}`);
+  }
+  let pruned = 0;
+  const prevManifest = join28(target, ".claude/DEPLOYED");
+  if (isFile(prevManifest)) {
+    let was = [];
+    try {
+      const doc = JSON.parse(readFileSync24(prevManifest, "utf8"));
+      const files = doc.files;
+      if (files === null || files === void 0 || typeof files !== "object" || Array.isArray(files)) {
+        throw new Error("no files map");
+      }
+      was = Object.keys(files).sort();
+    } catch {
+      was = [];
+    }
+    for (const old of was) {
+      if (old === "") continue;
+      if (payloadList.includes(old)) continue;
+      if ((h.claimed ?? []).includes(old)) continue;
+      if (seededList.includes(old)) {
+        item(h, old, "KEPT", "repo-owned, not pruned \u2014 an older harness shipped it as payload and this manifest still claims it; dropped from the new manifest so no later deploy reconsiders it");
+        continue;
+      }
+      if (!isFile(join28(target, old))) continue;
+      try {
+        unlinkSync(join28(target, old));
+      } catch {
+        continue;
+      }
+      item(h, old, "REMOVED", "no longer part of the payload");
+      pruned += 1;
+    }
+  }
+  const stamps = { ...orgStamp(orgLane) ?? {}, ...repoGovStamp(target) ?? {} };
+  const man = writeManifest(h, [...payloadList, ...h.claimed ?? []], Object.keys(stamps).length === 0 ? null : stamps);
+  item(h, ".claude/DEPLOYED", man.status, `manifest of ${man.filesCount} payload file(s) from ${[...man.sourceCommit].slice(0, 8).join("")}`);
+  const total = created + updated + unchanged;
+  cli.say("");
+  cli.say("--- checks ---");
+  if (isFile(tset)) {
+    const mc = missingChains(parseJson(tset));
+    if (mc !== "") {
+      check(h, "settings-hook-chains", false, `${target}/.claude/settings.json is missing hook chain(s): ${mc} \u2014 ${settingsFixText(h.srcClaude, target)}`);
+    } else {
+      check(h, "settings-hook-chains", true, `all ${HOOK_CHAIN_COUNT} hook chains declared at the repo root`);
+    }
+  } else {
+    check(h, "settings-hook-chains", false, `${target}/.claude/settings.json does not exist \u2014 install it: cp ${h.srcClaude}/settings.json ${target}/.claude/settings.json`);
+  }
+  if (isFile(tset)) {
+    let deadhook = "";
+    for (const t of hookTargets(parseJson(tset))) {
+      if (t.file === "") continue;
+      const dhp = expandProjectDir(t.file, target);
+      if (!isFile(dhp)) {
+        const shown = dhp.startsWith(`${target}/`) ? dhp.slice(target.length + 1) : dhp;
+        deadhook += ` ${shown}`;
+      }
+    }
+    if (deadhook !== "") {
+      check(h, "settings-hook-commands", false, `${target}/.claude/settings.json declares hook command(s) naming a file that is not there:${deadhook} \u2014 every event on those chains fails silently, and the repo looks entirely normal from the inside. This repo kept its own settings.json (deploy only appends to one, never rewrites an entry), so a payload file renamed or dropped upstream leaves the pointer behind. Take the current settings verbatim: rm ${target}/.claude/settings.json && <this command> again \u2014 or edit those command(s) by hand if this repo's settings.json carries hooks of its own worth keeping.`);
+    } else {
+      check(h, "settings-hook-commands", true, "every hook command in the target's settings.json names a file that exists");
+    }
+  } else {
+    check(h, "settings-hook-commands", false, "not checked \u2014 no settings.json at the repo root");
+  }
+  if (isFile(tset)) {
+    const unwired = wallsUnwired(parseJson(tset));
+    if (unwired.length > 0) {
+      const why = wallsUnplaced.length > 0 ? ` Not placed by this deploy: ${wallsUnplaced.map((u) => `${u.wall} on ${u.chain} (${u.why})`).join("; ")}.` : "";
+      warn(h, "walls-wired", wallsFixText(unwired, target, join28(h.srcClaude, "settings.json")) + why);
+    }
+  }
+  reportSessionPermissions(h, tset);
+  const gv = postInstall(ctx, ["records", "check"], { GOV_ROOT: target });
+  const gvout = stripTrailingNewlines(gv.combined);
+  if (gv.rc === 0) {
+    check(h, "records-check", true, `clean against ${target}${gv.note}`);
+  } else {
+    check(h, "records-check", false, `exited ${gv.rc} against ${target} \u2014 the install is NOT good; run GOV_ROOT=${target} ${gv.rerun} records check and fix each named finding. First lines: ${grepHead3Semis(gvout, /^ *(FAIL|WARN) /)}${gv.note}`);
+  }
+  const moved = seq.entries.length;
+  const seqWrote = h.items.some((i) => (i.status === "CREATED" || i.status === "UPDATED") && (i.path === SEQ_RECORD || i.path.startsWith(`${SEQ_DIR}/`)));
+  let changed;
+  let summary;
+  if (created === 0 && updated === 0 && moved === 0 && !seqWrote) {
+    changed = false;
+    summary = `harness deploy: nothing changed \u2014 all ${total} payload item(s) in ${target} already match this harness byte for byte, and .claude/DEPLOYED already describes them.`;
+    summary += orgSummary(orgLane);
+  } else {
+    changed = true;
+    summary = `harness deploy: ${created} created, ${updated} updated, ${unchanged} unchanged, ${pruned} removed (${total} payload item(s)) in ${target}, plus .claude/DEPLOYED.`;
+    summary += orgSummary(orgLane);
+    if (moved > 0) summary += ` ${moved} earlier instruction file(s) sequestered in .claude/sequestered/ (.claude/SEQUESTERED.json): they carry no authority until the owner re-admits them.`;
+  }
+  if (cli.fails() !== 0) {
+    summary += " The install FAILED its checks \u2014 see the check lines above; nothing was rolled back, fix and re-run.";
+  }
+  if (changed && isDir(join28(target, ".git"))) {
+    let dirty = 0;
+    try {
+      const r = spawnSync7("git", ["-C", target, "status", "--porcelain"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      const out = r.status === 0 && typeof r.stdout === "string" ? r.stdout : "";
+      dirty = (out.match(/\n/g) ?? []).length;
+    } catch {
+      dirty = 0;
+    }
+    if (dirty > 0) {
+      summary += ` ${target} now has ${dirty} uncommitted file(s). \`deliver\` refuses a dirty checkout, so commit them before accepting or dispatching work there.`;
+    }
+  }
+  return harnessEmit(h, summary, {
+    changed,
+    created,
+    updated,
+    unchanged,
+    // Additive (R-020): what a caller committing this deploy should stage.
+    commit_paths: commitPaths(h)
+  });
+}
+
+// src/nouns/harness/verify.ts
+import { readFileSync as readFileSync27, opendirSync as opendirSync2 } from "node:fs";
+import { join as join31 } from "node:path";
+
+// src/journal/timeout.ts
+import { spawnSync as spawnSync8 } from "node:child_process";
+var SIGNUM = {
+  SIGHUP: 1,
+  SIGINT: 2,
+  SIGQUIT: 3,
+  SIGILL: 4,
+  SIGTRAP: 5,
+  SIGABRT: 6,
+  SIGBUS: 10,
+  SIGFPE: 8,
+  SIGKILL: 9,
+  SIGUSR1: 30,
+  SIGSEGV: 11,
+  SIGUSR2: 31,
+  SIGPIPE: 13,
+  SIGALRM: 14,
+  SIGTERM: 15
+};
+var GRACE_MS = 5e3;
+var SUPERVISOR = `
+const { spawn, spawnSync } = require('node:child_process');
+const { writeSync } = require('node:fs');
+const [ms, grace, command] = [Number(process.argv[1]), Number(process.argv[2]), process.argv[3]];
+const win = process.platform === 'win32';
+const report = (r) => { try { writeSync(3, JSON.stringify(r)); } catch {} };
+let child;
+try {
+  child = spawn('sh', ['-c', command], { detached: !win, stdio: ['ignore', 'pipe', 'pipe'] });
+} catch { report({ code: 127, signal: null, timedOut: false }); process.exit(0); }
+child.stdout.pipe(process.stdout);
+child.stderr.pipe(process.stderr);
+let timedOut = false;
+let exitCode = null;
+let exitSignal = null;
+let done = false;
+const stopGroup = (sig) => {
+  if (win) { spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f']); return; }
+  try { process.kill(-child.pid, sig); } catch {}
+};
+const finish = () => {
+  if (done) return;
+  done = true;
+  report({ code: exitCode, signal: exitSignal, timedOut });
+  process.exitCode = 0;
+  if (timedOut) process.exit(0);
+};
+let hard = null;
+const timer = ms > 0 ? setTimeout(() => {
+  timedOut = true;
+  stopGroup('SIGTERM');
+  hard = setTimeout(() => { stopGroup('SIGKILL'); finish(); }, grace);
+}, ms) : null;
+child.on('error', () => { if (timer) clearTimeout(timer); report({ code: 127, signal: null, timedOut: false }); process.exit(0); });
+child.on('exit', (code, signal) => { exitCode = code; exitSignal = signal; });
+child.on('close', () => {
+  if (timer) clearTimeout(timer);
+  if (hard) clearTimeout(hard);
+  finish();
+});
+`;
+function runWithTimeout(seconds, command, opts = {}) {
+  const ms = seconds > 0 ? Math.round(seconds * 1e3) : 0;
+  const res = spawnSync8(process.execPath, ["-e", SUPERVISOR, String(ms), String(GRACE_MS), command], {
+    cwd: opts.cwd,
+    env: opts.env,
+    encoding: "utf8",
+    stdio: opts.capture === true ? ["ignore", "pipe", "pipe", "pipe"] : ["ignore", "inherit", "inherit", "pipe"],
+    maxBuffer: 256 * 1024 * 1024
+  });
+  const rawOut = typeof res.stdout === "string" ? res.stdout : "";
+  const rawErr = typeof res.stderr === "string" ? res.stderr : "";
+  const combine = opts.combine === true;
+  const stdout = combine ? rawOut + rawErr : rawOut;
+  const stderr = combine ? "" : rawErr;
+  const r = supervisorReport(res.output?.[3]);
+  if (r === null) return { code: 127, timedOut: false, signal: null, stdout, stderr };
+  if (r.timedOut) return { code: 128 + SIGNUM["SIGALRM"], timedOut: true, signal: "SIGALRM", stdout, stderr };
+  if (r.signal !== null) return { code: 128 + (SIGNUM[r.signal] ?? 0), timedOut: r.signal === "SIGALRM", signal: r.signal, stdout, stderr };
+  return { code: r.code ?? 127, timedOut: false, signal: null, stdout, stderr };
+}
+function supervisorReport(raw) {
+  if (typeof raw !== "string" || raw === "") return null;
+  try {
+    const o = JSON.parse(raw);
+    return {
+      code: typeof o.code === "number" ? o.code : null,
+      signal: typeof o.signal === "string" ? o.signal : null,
+      timedOut: o.timedOut === true
+    };
+  } catch {
+    return null;
+  }
+}
+
 // src/schema/check.ts
-import { readFileSync as readFileSync20 } from "node:fs";
-import { basename as basename4, join as join26 } from "node:path";
+import { readFileSync as readFileSync25 } from "node:fs";
+import { basename as basename4, join as join29 } from "node:path";
 var TYPE_NAMES = /* @__PURE__ */ new Set([
   "object",
   "array",
@@ -7421,9 +8570,9 @@ var PAIRS = [
   ["repo-health.json", "repo-health.schema.json"]
 ];
 function schemaDir(root) {
-  const claude = join26(root, ".claude", "schemas");
+  const claude = join29(root, ".claude", "schemas");
   if (isDir(claude)) return claude;
-  const deploy = join26(root, ".deploy-claude", "schemas");
+  const deploy = join29(root, ".deploy-claude", "schemas");
   if (isDir(deploy)) return deploy;
   return claude;
 }
@@ -7512,7 +8661,7 @@ function isInstance(record, want) {
   }
 }
 function loadSchema(name, schemaRoot) {
-  const path = join26(schemaDir(schemaRoot), name);
+  const path = join29(schemaDir(schemaRoot), name);
   return pyLoads(readText(path));
 }
 function checkJournal(journalPath, schemaName, schemaRoot) {
@@ -7536,7 +8685,7 @@ function sweep(govDir, schemaRoot) {
   let found = 0;
   for (const [journal, schema] of PAIRS) {
     try {
-      for (const err of checkJournal(join26(govDir, journal), schema, schemaRoot)) {
+      for (const err of checkJournal(join29(govDir, journal), schema, schemaRoot)) {
         lines.push(err);
         found += 1;
       }
@@ -7620,7 +8769,7 @@ function errnoPath(e) {
   return typeof p === "string" ? p : "";
 }
 function readText(path) {
-  return readFileSync20(path, "utf8");
+  return readFileSync25(path, "utf8");
 }
 function dictOrEmpty(v) {
   return v instanceof Map ? v : /* @__PURE__ */ new Map();
@@ -7639,8 +8788,8 @@ function rsplit(s2, sep, maxsplit) {
 }
 
 // src/nouns/harness/sequester-report.ts
-import { readFileSync as readFileSync21 } from "node:fs";
-import { join as join27 } from "node:path";
+import { readFileSync as readFileSync26 } from "node:fs";
+import { join as join30 } from "node:path";
 var ADVISORY = "Advisory: it never moves the exit code.";
 function reportSequester(h) {
   const { cli, target } = h;
@@ -7651,8 +8800,8 @@ function reportSequester(h) {
     const missing = [];
     const changed = [];
     for (const e of rec.entries) {
-      if (!isFile(join27(target, e.to))) missing.push(e.to);
-      else if (sealQuiet(join27(target, e.to)) !== e.sha256) changed.push(e.to);
+      if (!isFile(join30(target, e.to))) missing.push(e.to);
+      else if (sealQuiet(join30(target, e.to)) !== e.sha256) changed.push(e.to);
     }
     if (missing.length + changed.length > 0) {
       warn(h, "sequestered-intact", `${missing.length === 0 ? "" : `MISSING: ${missing.join(" ")}. `}${changed.length === 0 ? "" : `CHANGED: ${changed.join(" ")}. `}These are the only copies of the instructions this repo had before the harness, and ${SEQ_RECORD} records their sha256; restore them from git (git -C ${target} checkout -- <path>). ${ADVISORY}`);
@@ -7666,7 +8815,7 @@ function reportSequester(h) {
   const heldSet = new Set((rec?.held ?? []).map((x) => x.path));
   let rootOurs = false;
   try {
-    rootOurs = readFileSync21(join27(target, "CLAUDE.md"), "utf8").includes(OURS_MARKER);
+    rootOurs = readFileSync26(join30(target, "CLAUDE.md"), "utf8").includes(OURS_MARKER);
   } catch {
     rootOurs = false;
   }
@@ -7749,7 +8898,7 @@ function findByName(root, name) {
       return;
     }
     for (const e of entries) {
-      const p = join28(dir, e.name);
+      const p = join31(dir, e.name);
       if (e.name === name && p.includes("/.claude/")) out.push(p);
       if (e.isDirectory()) walk(p);
     }
@@ -7758,7 +8907,7 @@ function findByName(root, name) {
   return out;
 }
 function schemaSweepCheck(target, scriptsDir) {
-  const r = sweep(join28(target, "governance"), target);
+  const r = sweep(join31(target, "governance"), target);
   if (r.rc === 0) {
     return { ok: true, detail: `schema sweep clean against ${target}/governance` };
   }
@@ -7796,7 +8945,7 @@ function buildProvenance(manDoc, buildDoc, target) {
 }
 function parseJson2(path) {
   try {
-    return JSON.parse(readFileSync22(path, "utf8"));
+    return JSON.parse(readFileSync27(path, "utf8"));
   } catch {
     return void 0;
   }
@@ -7804,7 +8953,7 @@ function parseJson2(path) {
 function harnessVerify(h) {
   const { cli, ctx, target } = h;
   cli.say(`=== HARNESS VERIFY -> ${target} (${ctx.today}) ===`);
-  const tset = join28(target, ".claude/settings.json");
+  const tset = join31(target, ".claude/settings.json");
   if (isFile(tset)) {
     check(h, "settings-at-root", true, `settings.json is at the repo root (${tset}), which is where Claude Code resolves it at launch`);
   } else {
@@ -7856,12 +9005,17 @@ function harnessVerify(h) {
   } else {
     check(h, "hooks-executable", false, "not checked \u2014 no settings.json at the repo root");
   }
+  if (settingsParse) {
+    const unwired = wallsUnwired(settingsDoc);
+    if (unwired.length > 0) warn(h, "walls-wired", wallsFixText(unwired, target, join31(h.srcClaude, "settings.json")));
+    else h.cli.note("walls-wired", `all ${WALL_COUNT} base walls wired: ${BASE_WALL_NAMES.join(" ")}`);
+  }
   const roster = allPayloadFiles(h.srcClaude, h.srcRoot);
   let missingS = "";
   let nMissing = 0;
   for (const rel2 of roster) {
     if (rel2 === "") continue;
-    if (!isFile(join28(target, rel2))) {
+    if (!isFile(join31(target, rel2))) {
       missingS += ` ${rel2}`;
       nMissing += 1;
     }
@@ -7874,7 +9028,7 @@ function harnessVerify(h) {
   }
   let missingJ = "";
   for (const j of JOURNALS2) {
-    if (!isFile(join28(target, "governance", j))) missingJ += ` ${j}`;
+    if (!isFile(join31(target, "governance", j))) missingJ += ` ${j}`;
   }
   if (missingJ !== "") {
     check(h, "journals", false, `journal(s) absent from ${target}/governance:${missingJ} \u2014 re-run harness deploy ${target}`);
@@ -7911,7 +9065,7 @@ function harnessVerify(h) {
   } else {
     check(h, "surfaces-run", true, `all ${probeN} registered surface(s) executed in ${target} and answered:${probeNames}. Declared exemptions: ${exemptText}`);
   }
-  const man = join28(target, ".claude/DEPLOYED");
+  const man = join31(target, ".claude/DEPLOYED");
   const manDoc = isFile(man) ? parseJson2(man) : void 0;
   const filesVal = manDoc !== void 0 && manDoc !== null && typeof manDoc === "object" && !Array.isArray(manDoc) ? manDoc["files"] : void 0;
   if (!isFile(man)) {
@@ -7928,18 +9082,18 @@ function harnessVerify(h) {
       if (dp === "") continue;
       dcount += 1;
       const dh = String(files[dp]);
-      if (!isFile(join28(target, dp))) {
+      if (!isFile(join31(target, dp))) {
         driftGone += ` ${dp}`;
         continue;
       }
-      if (sealQuiet(join28(target, dp)) === dh) continue;
+      if (sealQuiet(join31(target, dp)) === dh) continue;
       if (driftClass(dp) === "tracked") driftTracked += ` ${dp}`;
       else driftFrozen += ` ${dp}`;
     }
     let orphans2 = "";
     for (const od of [".claude/scripts", ".claude/schemas", ".claude/dist"]) {
-      if (!isDir(join28(target, od))) continue;
-      for (const abs of walkLikeFind(join28(target, od))) {
+      if (!isDir(join31(target, od))) continue;
+      for (const abs of walkLikeFind(join31(target, od))) {
         const name = abs.slice(abs.lastIndexOf("/") + 1);
         if (name.endsWith(".pyc") || name === ".DS_Store") continue;
         if (abs.includes("__pycache__")) continue;
@@ -7968,13 +9122,18 @@ function harnessVerify(h) {
     }
   }
   {
-    const dist = join28(target, ".claude/dist/BUILD.json");
+    const dist = join31(target, ".claude/dist/BUILD.json");
     const bp = buildProvenance(manDoc, isFile(dist) ? parseJson2(dist) : void 0, target);
     if (bp.tier === "warn") warn(h, "build-provenance", bp.detail);
     else cli.note("build-provenance", bp.detail);
   }
-  reportSessionPermissions(h, join28(target, ".claude/settings.json"));
+  reportSessionPermissions(h, join31(target, ".claude/settings.json"));
   reportSequester(h);
+  {
+    const rg = measure(target);
+    if (rg.state === "none" || rg.state === "current") cli.note("repo-governance", rg.detail);
+    else warn(h, "repo-governance", rg.detail);
+  }
   const nfail = cli.fails();
   const nall = h.rows;
   const summary = nfail === 0 ? `harness verify: ${target} is INSTALLED \u2014 ${nall}/${nall} checks pass. Installed is not live: whether these hooks fire is decided by the project root a session was LAUNCHED with, which nothing inside it can change.` : `harness verify: ${target} is NOT fully installed \u2014 ${nfail} of ${nall} checks failed. Each FAIL line above names the fix.`;
@@ -7982,8 +9141,8 @@ function harnessVerify(h) {
 }
 
 // src/nouns/harness/digest.ts
-import { readFileSync as readFileSync23 } from "node:fs";
-import { join as join29 } from "node:path";
+import { readFileSync as readFileSync28 } from "node:fs";
+import { join as join32 } from "node:path";
 
 // src/nouns/harness/stale-markers.ts
 var C = "CLAUDE.md";
@@ -8115,7 +9274,7 @@ function isProse(path) {
 // src/nouns/harness/digest.ts
 function readText2(p) {
   try {
-    return readFileSync23(p, "utf8");
+    return readFileSync28(p, "utf8");
   } catch {
     return null;
   }
@@ -8131,7 +9290,7 @@ function readJson(p) {
 }
 function payloadProse(h) {
   const out = [];
-  const c = readText2(join29(h.srcClaude, PAYLOAD_CLAUDE_MD));
+  const c = readText2(join32(h.srcClaude, PAYLOAD_CLAUDE_MD));
   if (c !== null) out.push({ path: "CLAUDE.md", text: c });
   for (const rel2 of allPayloadFiles(h.srcClaude, h.srcRoot)) {
     if (!rel2.endsWith(".md")) continue;
@@ -8155,7 +9314,7 @@ function harnessDigest(h) {
   const files = [];
   for (const w of wanted) {
     if (!isProse(w.from)) continue;
-    const text2 = readText2(join29(target, w.at));
+    const text2 = readText2(join32(target, w.at));
     if (text2 === null) {
       cli.say(`  ${w.from} \u2014 ${w.at} cannot be read; harness verify's sequestered-intact row says why`);
       continue;
@@ -8175,8 +9334,8 @@ function harnessDigest(h) {
   for (const x of plan.held) cli.say(`  HELD   ${x.path} \u2014 ${x.reason}: ${x.refs.join(" ")}`);
   for (const n of plan.nested) cli.say(`  NESTED ${n} \u2014 below the root, never moved; a session reading that directory loads it`);
   for (const p of plan.liveUntracked) cli.say(`  LIVE   ${p} \u2014 untracked, not moved`);
-  const tset = readJson(join29(target, ".claude/settings.json"));
-  const pset = readJson(join29(h.srcClaude, "settings.json"));
+  const tset = readJson(join32(target, ".claude/settings.json"));
+  const pset = readJson(join32(h.srcClaude, "settings.json"));
   const variance = tset === void 0 || pset === void 0 ? null : settingsVariance(tset, pset);
   if (variance === null) {
     cli.say("  settings: not compared \u2014 the target or the payload has no settings.json that parses");
@@ -8197,8 +9356,8 @@ function harnessDigest(h) {
 }
 
 // src/nouns/harness/sequester-verbs.ts
-import { appendFileSync as appendFileSync2, mkdirSync as mkdirSync7, readFileSync as readFileSync24, writeFileSync as writeFileSync10 } from "node:fs";
-import { dirname as dirname10, isAbsolute as isAbsolute2, join as join30, normalize } from "node:path";
+import { appendFileSync as appendFileSync3, mkdirSync as mkdirSync9, readFileSync as readFileSync29, writeFileSync as writeFileSync13 } from "node:fs";
+import { dirname as dirname11, isAbsolute as isAbsolute2, join as join33, normalize } from "node:path";
 function harnessSequester(h, opts) {
   const { cli, target } = h;
   cli.say(`=== HARNESS SEQUESTER -> ${target} (${h.ctx.today})${opts.dryRun ? " \u2014 dry run, nothing is written" : ""} ===`);
@@ -8213,7 +9372,7 @@ function harnessSequester(h, opts) {
     }
   }
   const seq = runSequester(h, opts);
-  const deployed = isFile(join30(target, ".claude/DEPLOYED"));
+  const deployed = isFile(join33(target, ".claude/DEPLOYED"));
   const rootMoved = seq.entries.some((e) => e.from === "CLAUDE.md");
   if (!opts.dryRun && (deployed || rootMoved)) applyConstitution(h, seq);
   if (!deployed) cli.tell("not-deployed", `${target} has no .claude/DEPLOYED \u2014 sequestering is done; run scrumux harness deploy ${target} to install the rest of the harness`);
@@ -8250,7 +9409,7 @@ function writeRecord(h, rec) {
 function closeReview(h, rec, decision) {
   let rows5 = [];
   try {
-    const doc = JSON.parse(readFileSync24(join30(h.target, "governance/decisions.json"), "utf8"));
+    const doc = JSON.parse(readFileSync29(join33(h.target, "governance/decisions.json"), "utf8"));
     rows5 = Array.isArray(doc.entries) ? doc.entries : [];
   } catch {
     rows5 = [];
@@ -8286,25 +9445,25 @@ function harnessReadmit(h, o) {
   }
   let content;
   try {
-    content = readFileSync24(join30(target, e.to), "utf8");
+    content = readFileSync29(join33(target, e.to), "utf8");
   } catch {
     return cli.die(`${e.to} cannot be read \u2014 restore it from git (git -C ${target} checkout -- ${e.to}), then re-run`);
   }
-  const abs = join30(target, to);
+  const abs = join33(target, to);
   const existed = isFile(abs);
   if (existed && !to.endsWith(".md")) {
     cli.die(`${to} already exists and is not markdown, so the content cannot be appended under a heading \u2014 name a --to that does not exist yet, or move ${to} first`);
   }
   try {
-    mkdirSync7(dirname10(abs), { recursive: true });
-    if (!existed && to === STANDARDS) writeFileSync10(abs, STANDARDS_HEAD);
+    mkdirSync9(dirname11(abs), { recursive: true });
+    if (!existed && to === STANDARDS) writeFileSync13(abs, STANDARDS_HEAD);
     if (existed || to === STANDARDS) {
-      appendFileSync2(abs, `
+      appendFileSync3(abs, `
 ## Re-admitted from \`${e.from}\` (${h.ctx.today})
 
 ${content.replace(/\n*$/, "\n")}`);
     } else {
-      writeFileSync10(abs, content);
+      writeFileSync13(abs, content);
     }
   } catch {
     cli.die(`cannot write ${to} in ${target} \u2014 check the target's permissions`);
@@ -8319,7 +9478,7 @@ var VERBS = ["deploy", "verify", "sequester", "digest", "readmit"];
 var VERBS_TSV7 = "deploy	install the machinery into a target repo\nverify	prove the machinery is INSTALLED in a target repo\nsequester	move the instructions that came before the harness out of force\ndigest	read-only review material for what was sequestered\nreadmit	put sequestered content back in force, or close the review\n";
 var USAGE6 = NOUN_USAGE["harness"] ?? "";
 var SYNOPSIS = {
-  deploy: "scrumux harness deploy <target> [--json]",
+  deploy: "scrumux harness deploy <target> [--org ORG [--org-version V]] [--json]",
   verify: "scrumux harness verify <target> [--json]",
   sequester: "scrumux harness sequester <target> [--dry-run] [--keep PATH --reason R]... [--json]",
   digest: "scrumux harness digest <target> [--json]",
@@ -8327,10 +9486,11 @@ var SYNOPSIS = {
 };
 function parseArgs(cli, verb, args) {
   const usage = `usage: ${SYNOPSIS[verb]}`;
-  const out = { target: "", dryRun: false, keep: [], readmit: { close: false } };
+  const out = { target: "", dryRun: false, keep: [], readmit: { close: false }, org: null, orgVersion: null };
   const positional = [];
   let pendingKeep = null;
   const flags = {
+    deploy: ["--org", "--org-version"],
     sequester: ["--dry-run", "--keep", "--reason"],
     readmit: ["--to", "--reason", "--close", "--decision"]
   };
@@ -8352,6 +9512,14 @@ function parseArgs(cli, verb, args) {
     const v = args[i + 1];
     if (v === void 0 || v.startsWith("--")) cli.dieUsage(`${a} needs a value \u2014 ${usage}`);
     i += 1;
+    if (a === "--org") {
+      out.org = v;
+      continue;
+    }
+    if (a === "--org-version") {
+      out.orgVersion = v;
+      continue;
+    }
     if (a === "--keep") {
       if (pendingKeep !== null) cli.dieUsage(`--keep ${pendingKeep} needs its own --reason before the next --keep \u2014 ${usage}`);
       pendingKeep = v;
@@ -8364,6 +9532,7 @@ function parseArgs(cli, verb, args) {
     else out.readmit.decision = v;
   }
   if (pendingKeep !== null) cli.dieUsage(`--keep ${pendingKeep} needs a --reason \u2014 ${usage}`);
+  if (out.orgVersion !== null && out.org === null) cli.dieUsage(`--org-version needs --org ORG \u2014 ${usage}`);
   if (positional.length === 0) cli.dieUsage(`${verb} needs a target repo \u2014 ${usage}`);
   const wantPos = verb === "readmit" && !out.readmit.close ? 2 : 1;
   if (verb !== "readmit" && positional.length > 1) {
@@ -8385,10 +9554,10 @@ function harnessRun(cli, ctx, verb, args) {
   const parsed = parseArgs(cli, verb, args);
   const target = parsed.target;
   const nctx = nounContext(ctx);
-  const abs = resolve4(nctx.cwd, target);
+  const abs = resolve5(nctx.cwd, target);
   let isDir2 = false;
   try {
-    isDir2 = statSync11(abs).isDirectory();
+    isDir2 = statSync13(abs).isDirectory();
   } catch {
     isDir2 = false;
   }
@@ -8408,12 +9577,12 @@ function harnessRun(cli, ctx, verb, args) {
     // SRC_CLAUDE is derived from where the CLI lives, so it already carries
     // whichever name the source actually uses (`.deploy-claude/` here,
     // `.claude/` in a deployment) and nothing downstream needs to know which.
-    srcClaude: resolve4(nctx.scriptsDir, ".."),
+    srcClaude: resolve5(nctx.scriptsDir, ".."),
     srcRoot: nctx.codeRoot,
     items: [],
     rows: 0
   };
-  if (verb === "deploy") return harnessDeploy(h);
+  if (verb === "deploy") return harnessDeploy(h, { org: parsed.org, orgVersion: parsed.orgVersion });
   if (verb === "sequester") return harnessSequester(h, { dryRun: parsed.dryRun, keep: parsed.keep });
   if (verb === "digest") return harnessDigest(h);
   if (verb === "readmit") return harnessReadmit(h, parsed.readmit);
@@ -8426,7 +9595,7 @@ var MODULE7 = {
 };
 
 // src/nouns/health.ts
-import { join as join31 } from "node:path";
+import { join as join34 } from "node:path";
 var VERBS_TSV8 = "add	the only verb\n";
 var USAGE7 = NOUN_USAGE["health"] ?? "";
 var SEED3 = '{"entries": []}';
@@ -8506,7 +9675,7 @@ function healthAdd(cli, ctx, io, args) {
   if (f.timeout !== "" && /[^0-9]/.test(f.timeout)) {
     cli.die("health: --timeout must be an integer (seconds)");
   }
-  const path = join31(ctx.gov, "repo-health.json");
+  const path = join34(ctx.gov, "repo-health.json");
   const opts = { gov: ctx.gov, today: ctx.today, env: ctx.env, err: (s2) => io.err(s2) };
   let displaced = [];
   refusing(cli, () => {
@@ -8541,36 +9710,36 @@ var MODULE8 = {
 };
 
 // src/nouns/issue.ts
-import { readFileSync as readFileSync26 } from "node:fs";
-import { join as join33 } from "node:path";
+import { readFileSync as readFileSync31 } from "node:fs";
+import { join as join36 } from "node:path";
 
 // src/nouns/issue-read.ts
-import { readFileSync as readFileSync25 } from "node:fs";
-import { join as join32 } from "node:path";
+import { readFileSync as readFileSync30 } from "node:fs";
+import { join as join35 } from "node:path";
 var STATUSES = ["open", "accepted", "resolved", "rejected", "all"];
 function issueRows(gov) {
   try {
-    return entriesOf(parsePreservingNumbers(readFileSync25(join32(gov, "issues.json"), "utf8")));
+    return entriesOf(parsePreservingNumbers(readFileSync30(join35(gov, "issues.json"), "utf8")));
   } catch {
     return [];
   }
 }
-var str3 = (v) => typeof v === "string" ? v : null;
+var str6 = (v) => typeof v === "string" ? v : null;
 var filesOf = (e) => {
   const f = field(e, "refs", "files");
   return Array.isArray(f) ? f.filter((x) => typeof x === "string") : [];
 };
 function view(e) {
   return {
-    id: str3(field(e, "id")),
-    type: str3(field(e, "type")),
-    status: str3(field(e, "status")),
-    severity: str3(field(e, "severity")),
-    summary: str3(field(e, "summary")),
-    resolution_pointer: str3(field(e, "resolution_pointer")),
-    task: str3(field(e, "refs", "task")),
+    id: str6(field(e, "id")),
+    type: str6(field(e, "type")),
+    status: str6(field(e, "status")),
+    severity: str6(field(e, "severity")),
+    summary: str6(field(e, "summary")),
+    resolution_pointer: str6(field(e, "resolution_pointer")),
+    task: str6(field(e, "refs", "task")),
     files: filesOf(e),
-    created_at: str3(field(e, "created_at"))
+    created_at: str6(field(e, "created_at"))
   };
 }
 function matchIssues(rows5, f) {
@@ -8665,7 +9834,7 @@ var VERDICTS = ["reproduced", "evidenced", "invalidated", "duplicate"];
 var STATUSES2 = ["open", "accepted", "resolved", "rejected"];
 var SEVERITIES = ["low", "medium", "high", "critical"];
 function issuesPath(ctx) {
-  return join33(ctx.gov, "issues.json");
+  return join36(ctx.gov, "issues.json");
 }
 function requireIssue(cli, ctx, verb, id) {
   if (refExists(issuesPath(ctx), id)) return;
@@ -9108,21 +10277,21 @@ var MODULE9 = {
 };
 function readDoc(path) {
   try {
-    return parsePreservingNumbers(readFileSync26(path, "utf8"));
+    return parsePreservingNumbers(readFileSync31(path, "utf8"));
   } catch {
     return null;
   }
 }
 
 // src/nouns/log.ts
-import { join as join35 } from "node:path";
+import { join as join38 } from "node:path";
 
 // src/nouns/log-show.ts
-import { readFileSync as readFileSync27 } from "node:fs";
-import { join as join34 } from "node:path";
+import { readFileSync as readFileSync32 } from "node:fs";
+import { join as join37 } from "node:path";
 function logRows(gov) {
   try {
-    return entriesOf(parsePreservingNumbers(readFileSync27(join34(gov, "log.json"), "utf8")));
+    return entriesOf(parsePreservingNumbers(readFileSync32(join37(gov, "log.json"), "utf8")));
   } catch {
     return [];
   }
@@ -9255,7 +10424,7 @@ function logNew(cli, ctx, io, args) {
     cli.die('log: --did is required (what_was_done) \u2014 the EVIDENCE, not a story: the verify command and its rc, git diff --stat, and every refusal you hit and what you did about it. GOOD "harness deploy seeding lane creates .claude/rules/project-standards.md and .claude/project-walls.conf create-if-absent; the I-0143 prune then removed any path the previous manifest names that payload.list lacks. Fixed by writing each seeded path into TMPD/seeded.list and skipping it in the prune. sh tests/harness-tests.sh rc=0; 3 files changed, 61 insertions" (L-0285). GOOD "scrumux repair on governance/decisions.json. Reason: stamping the back-references for D-0081 and D-0082, without which the twenty dead rulings go on rendering as current law" (L-0284). BAD "created X, verified Y" \u2014 nothing there can be checked by a reader who was not present.');
   }
   if (f.task !== "") refusing(cli, () => requireTaskRef(ctx.gov, f.task));
-  const logPath = join35(ctx.gov, "log.json");
+  const logPath = join38(ctx.gov, "log.json");
   const opts = { gov: ctx.gov, today: ctx.today, env: ctx.env, err: (s2) => io.err(s2) };
   const id = refusing(cli, () => {
     ensureFile(logPath, SEED5);
@@ -9269,7 +10438,7 @@ function logNew(cli, ctx, io, args) {
     warnReseal(cli, res.resealWarning);
     if (f.task !== "") {
       const back = writeJson(
-        join35(ctx.gov, "tasks.json"),
+        join38(ctx.gov, "tasks.json"),
         (doc) => mapEntries(doc, (row) => {
           if (field(row, "id") !== f.task) return row;
           const o = row;
@@ -9302,8 +10471,8 @@ var MODULE10 = {
 };
 
 // src/nouns/memory.ts
-import { existsSync as existsSync12, mkdirSync as mkdirSync8, readFileSync as readFileSync28, statSync as statSync12, writeFileSync as writeFileSync11 } from "node:fs";
-import { join as join36 } from "node:path";
+import { existsSync as existsSync15, mkdirSync as mkdirSync10, readFileSync as readFileSync33, statSync as statSync14, writeFileSync as writeFileSync14 } from "node:fs";
+import { join as join39 } from "node:path";
 var VERBS_TSV11 = "add	the only verb\n";
 var USAGE9 = NOUN_USAGE["memory"] ?? "";
 var MEMORY_HEADER = `# validator-memory.md \u2014 issue-validator's durable memory
@@ -9349,7 +10518,7 @@ function blockLineCount(block) {
 }
 var readStdin = () => {
   try {
-    return readFileSync28(0, "utf8");
+    return readFileSync33(0, "utf8");
   } catch {
     return "";
   }
@@ -9363,7 +10532,7 @@ function memoryAdd(cli, ctx, args, stdin) {
   if (f.file !== "") {
     if (!isFile(f.file)) cli.die(`memory: --file ${f.file} does not exist`);
     try {
-      block = stripTrailingNewlines2(readFileSync28(f.file, "utf8"));
+      block = stripTrailingNewlines2(readFileSync33(f.file, "utf8"));
     } catch {
       block = "";
     }
@@ -9373,17 +10542,17 @@ function memoryAdd(cli, ctx, args, stdin) {
   if (block === "") {
     cli.die("memory: the block is empty \u2014 refusing to append a heading with nothing under it (an empty run is not a run)");
   }
-  const mem = join36(ctx.gov, "validator-memory.md");
+  const mem = join39(ctx.gov, "validator-memory.md");
   let created = false;
   refusing(cli, () => {
     if (!isFile(mem)) {
       try {
-        mkdirSync8(ctx.gov, { recursive: true });
+        mkdirSync10(ctx.gov, { recursive: true });
       } catch {
         throw new JournalRefusal(`memory: cannot create ${ctx.gov}`);
       }
       try {
-        writeFileSync11(mem, MEMORY_HEADER);
+        writeFileSync14(mem, MEMORY_HEADER);
       } catch {
         throw new JournalRefusal(`memory: cannot create ${mem}`);
       }
@@ -9396,7 +10565,7 @@ function memoryAdd(cli, ctx, args, stdin) {
   const heading = `## Run ${ctx.today} \u2014 ${f.by}`;
   refusing(cli, () => {
     try {
-      writeFileSync11(mem, `
+      writeFileSync14(mem, `
 ${heading}
 
 ${block}
@@ -9409,9 +10578,9 @@ ${block}
   return cli.emit(created ? `created validator-memory.md and appended ${n} line(s) under '${heading}'` : `appended ${n} line(s) to validator-memory.md under '${heading}'`);
 }
 function isNonEmptyFile(p) {
-  if (!existsSync12(p)) return false;
+  if (!existsSync15(p)) return false;
   try {
-    return statSync12(p).size > 0;
+    return statSync14(p).size > 0;
   } catch {
     return false;
   }
@@ -9431,16 +10600,603 @@ var MODULE11 = {
   }
 };
 
+// src/nouns/org/verbs.ts
+import { cpSync, mkdirSync as mkdirSync11, readFileSync as readFileSync35, writeFileSync as writeFileSync16 } from "node:fs";
+import { join as join41, resolve as resolve6 } from "node:path";
+
+// src/nouns/org/detach.ts
+import { existsSync as existsSync16, readdirSync as readdirSync5, readFileSync as readFileSync34, rmdirSync as rmdirSync2, unlinkSync as unlinkSync2, writeFileSync as writeFileSync15 } from "node:fs";
+import { dirname as dirname12, join as join40 } from "node:path";
+function planDetach(target) {
+  const inst = readInstalled(target);
+  const prev = previousOrgPaths(target);
+  if (inst.kind === "absent" && prev.claimed.length === 0 && !isFile(join40(target, ORG_BUNDLE))) return null;
+  const set = /* @__PURE__ */ new Set([ORG_FILE, ORG_BUNDLE, ...prev.claimed]);
+  const recorded = prev.stamp?.["org_allow"];
+  const allow = Array.isArray(recorded) ? recorded.filter((x) => typeof x === "string") : [];
+  let name = null;
+  let version = null;
+  let note = null;
+  if (inst.kind === "ok") {
+    for (const p of Object.keys(inst.org.files)) set.add(p);
+    name = inst.org.name;
+    version = inst.org.version;
+  } else if (inst.kind === "unreadable") {
+    note = `${ORG_FILE} ${inst.error}; the paths come from .claude/DEPLOYED`;
+  } else {
+    note = `${ORG_FILE} is absent; the paths come from .claude/DEPLOYED`;
+  }
+  if (!Array.isArray(recorded)) note = `${note === null ? "" : `${note}; `}.claude/DEPLOYED records no org_allow, so no allow rule is removed (a deploy before this record, or a layer that added none)`;
+  const files = [...set].filter((p) => isFile(join40(target, p))).sort();
+  return { files, allow, name, version, note };
+}
+var isObj7 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+function unwireOrg(doc, allow) {
+  if (!isObj7(doc)) return { doc, hooks: 0, allow: 0 };
+  let hooks = 0;
+  const h = doc["hooks"];
+  if (isObj7(h) && Array.isArray(h["PreToolUse"])) {
+    const kept = [];
+    for (const e of h["PreToolUse"]) {
+      if (!isObj7(e) || !Array.isArray(e["hooks"])) {
+        kept.push(e);
+        continue;
+      }
+      const list = e["hooks"].filter((hk) => {
+        const args = isObj7(hk) ? hk["args"] : void 0;
+        const ours = Array.isArray(args) && typeof args[0] === "string" && args[0].endsWith("org-walls.mjs");
+        if (ours) hooks += 1;
+        return !ours;
+      });
+      if (list.length === 0) continue;
+      kept.push({ ...e, hooks: list });
+    }
+    h["PreToolUse"] = kept;
+  }
+  let removed = 0;
+  try {
+    const current = allowOf(doc);
+    const next = current.filter((r) => {
+      const drop = typeof r === "string" && allow.includes(r);
+      if (drop) removed += 1;
+      return !drop;
+    });
+    if (removed > 0) doc["permissions"]["allow"] = next;
+  } catch {
+  }
+  return { doc, hooks, allow: removed };
+}
+function unstampManifest(doc, removed) {
+  if (!isObj7(doc)) return doc;
+  const out = {};
+  for (const [k2, v] of Object.entries(doc)) {
+    if (k2 === "org_name" || k2 === "org_version" || k2 === "org_sha" || k2 === "org_allow") continue;
+    if (k2 === "files" && isObj7(v)) {
+      const files = {};
+      for (const [p, sha] of Object.entries(v)) if (!removed.includes(p)) files[p] = sha;
+      out[k2] = files;
+      continue;
+    }
+    out[k2] = v;
+  }
+  return out;
+}
+function pruneEmptyDirs(target, rel2) {
+  let dir = dirname12(rel2);
+  while (/^\.claude\/(rules|skills|agents)\/.+/.test(dir)) {
+    const abs = join40(target, dir);
+    try {
+      if (readdirSync5(abs).length > 0) return;
+      rmdirSync2(abs);
+    } catch {
+      return;
+    }
+    dir = dirname12(dir);
+  }
+}
+function detach(cli, target) {
+  const plan = planDetach(target);
+  if (plan === null) return null;
+  const removed = [];
+  for (const p of plan.files) {
+    try {
+      unlinkSync2(join40(target, p));
+      removed.push(p);
+    } catch {
+      cli.die(`cannot remove ${target}/${p} \u2014 check the permission and re-run`);
+    }
+    pruneEmptyDirs(target, p);
+  }
+  const commitPaths2 = [...removed];
+  let hooks = 0;
+  let allowN = 0;
+  const tset = join40(target, ".claude/settings.json");
+  if (isFile(tset)) {
+    let doc;
+    try {
+      doc = parsePreservingNumbers(readFileSync34(tset, "utf8"));
+    } catch {
+      doc = void 0;
+    }
+    if (doc !== void 0) {
+      const r = unwireOrg(doc, plan.allow);
+      hooks = r.hooks;
+      allowN = r.allow;
+      if (hooks + allowN > 0) {
+        try {
+          writeFileSync15(tset, jqFormat(r.doc));
+          commitPaths2.push(".claude/settings.json");
+        } catch {
+          cli.die(`cannot write ${tset}`);
+        }
+      }
+    }
+  }
+  const man = join40(target, ".claude/DEPLOYED");
+  if (isFile(man)) {
+    let doc;
+    try {
+      doc = parsePreservingNumbers(readFileSync34(man, "utf8"));
+    } catch {
+      doc = void 0;
+    }
+    if (doc !== void 0 && isObj7(doc)) {
+      const next = unstampManifest(doc, [...removed, ...plan.files]);
+      const text2 = jqFormat(next);
+      if (text2 !== readFileSync34(man, "utf8")) {
+        try {
+          writeFileSync15(man, text2);
+          commitPaths2.push(".claude/DEPLOYED");
+        } catch {
+          cli.die(`cannot write ${man}`);
+        }
+      }
+    }
+  }
+  return { removed, hooks, allow: allowN, plan, commitPaths: commitPaths2.filter((p, i, a) => a.indexOf(p) === i && existsSync16(join40(target, p)) || removed.includes(p)) };
+}
+
+// src/nouns/org/verbs.ts
+var TAKES_VALUE = /* @__PURE__ */ new Set(["--org", "--version", "--file", "--from", "--why", "--by", "--authority", "--reason", "--note"]);
+function parseFlags(args, die, allowed) {
+  const f = { positional: [], org: null, version: null, draft: false, file: null, from: null, why: null, by: null, authority: null, reason: null, note: null };
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    if (!a.startsWith("--")) {
+      f.positional.push(a);
+      continue;
+    }
+    if (!allowed.includes(a)) die(`unknown flag ${a} \u2014 see: scrumux help org`);
+    if (a === "--draft") {
+      f.draft = true;
+      continue;
+    }
+    const v = args[i + 1];
+    if (!TAKES_VALUE.has(a)) die(`unknown flag ${a} \u2014 see: scrumux help org`);
+    if (v === void 0 || v.startsWith("--")) die(`${a} needs a value \u2014 see: scrumux help org`);
+    i += 1;
+    const key = a.slice(2);
+    f[key] = v;
+  }
+  return f;
+}
+function repoArg(cli, ctx, f, verb) {
+  const t = f.positional[0];
+  if (t === void 0) cli.dieUsage(`org ${verb} needs a target repo \u2014 usage: scrumux org ${verb} <repo> ...`);
+  const abs = resolve6(ctx.cwd, t);
+  if (!isDir(abs)) cli.die(`target ${t} is not a directory`);
+  return abs;
+}
+function storeArg(cli, ctx, f, verb) {
+  if (f.org === null) cli.dieUsage(`org ${verb} needs --org ORG \u2014 the organization's name in the store (SCRUMUX_ORG_ROOT, default ~/server/data/scrumux/org)`);
+  try {
+    return { org: f.org, store: storeOf(ctx.env, f.org) };
+  } catch (e) {
+    return cli.die(`--org: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+function sourceTextOf(packDir, it) {
+  const p = it.kind === "skill" ? join41(packDir, it.dir, "SKILL.md.payload") : join41(packDir, it.file);
+  try {
+    return readFileSync35(p, "utf8");
+  } catch {
+    return null;
+  }
+}
+function itemsData(packDir, m) {
+  return sourceItems(m).map((it) => ({
+    kind: it.kind,
+    id: it.id,
+    key: itemKey(it),
+    landing: landingOf(m.name, it),
+    source: it.kind === "skill" ? `${it.dir}/SKILL.md.payload` : it.file,
+    why: it.why,
+    provenance: it.provenance,
+    text: sourceTextOf(packDir, it)
+  }));
+}
+var wallsData = (walls) => walls;
+function orgShow(cli, ctx, args) {
+  const f = parseFlags(args, (m2) => cli.dieUsage(m2), ["--org", "--draft", "--version"]);
+  if (f.org === null) {
+    const target = repoArg(cli, ctx, f, "show");
+    const r = readInstalled(target);
+    if (r.kind === "absent") {
+      cli.data({ org: null, source: "installed" });
+      return cli.emit(`no organization layer in ${target} \u2014 none was deployed (harness deploy ${target} --org ORG installs one)`);
+    }
+    if (r.kind === "unreadable") cli.die(`${target}/${ORG_FILE} ${r.error} \u2014 re-run harness deploy ${target} --org ORG to rewrite it`);
+    const o = r.org;
+    const items = o.items.map((it) => {
+      const p = it.kind === "skill" ? join41(target, it.path, "SKILL.md") : join41(target, it.path);
+      let text2 = null;
+      try {
+        text2 = readFileSync35(p, "utf8");
+      } catch {
+        text2 = null;
+      }
+      return { ...it, key: `${it.kind}:${it.id}`, text: text2 };
+    });
+    cli.data({ org: { name: o.name, version: o.version, org_sha: o.org_sha, installed_at: o.installed_at }, source: "installed", walls: wallsData(o.walls), allow: o.allow, items, accepted: readAcceptances(target) });
+    return cli.emit(`${target} carries organization ${o.name} ${o.version}: ${o.walls.length} wall(s), ${o.allow.length} allow rule(s), ${o.items.length} item(s)`);
+  }
+  const { org, store } = storeArg(cli, ctx, f, "show");
+  if (f.draft) {
+    const dir = join41(store, DRAFT);
+    const { manifest, problems } = packProblems(dir);
+    cli.data({ org: { name: manifest.name, version: manifest.version }, source: "draft", dir, problems, walls: wallsData(manifest.walls), allow: manifest.allow, items: itemsData(dir, manifest), current: currentVersion(store) });
+    if (problems.length > 0) {
+      for (const p of problems) cli.warn("draft-problem", p);
+      return cli.emit(`draft of ${org} at ${dir} would be refused by publish: ${problems.length} problem(s) above`);
+    }
+    return cli.emit(`draft of ${org} ${manifest.version} at ${dir}: ${manifest.walls.length} wall(s), ${sourceItems(manifest).length} item(s); current published: ${currentVersion(store) ?? "none"}`);
+  }
+  const pub = readPublished(store, f.version);
+  if (pub.kind !== "ok") cli.die(`org ${org}: ${pub.why}`);
+  const m = pub.manifest;
+  cli.data({ org: { name: m.name, version: m.version, org_sha: pub.published.org_sha, published_at: pub.published.published_at, by: pub.published.by, authority: pub.published.authority, note: pub.published.note }, source: "published", dir: pub.dir, walls: wallsData(m.walls), allow: m.allow, items: itemsData(pub.dir, m), current: currentVersion(store), proposals: readProposals(store) });
+  return cli.emit(`${org} ${m.version} (published ${pub.published.published_at} by ${pub.published.by}): ${m.walls.length} wall(s), ${m.allow.length} allow rule(s), ${sourceItems(m).length} item(s)`);
+}
+function orgHistory(cli, ctx, args) {
+  const f = parseFlags(args, (m) => cli.dieUsage(m), ["--org"]);
+  const { org, store } = storeArg(cli, ctx, f, "history");
+  const rows5 = readHistory(store);
+  cli.data({ org, rows: rows5, current: currentVersion(store) });
+  for (const r of rows5) cli.say(`  ${r.at}  ${r.act.padEnd(8)} ${r.by}${r.authority === "" ? "" : ` (${r.authority})`}: ${r.detail}${r.why === "" ? "" : ` \u2014 ${r.why}`}`);
+  return cli.emit(`${org}: ${rows5.length} history row(s); current published version ${currentVersion(store) ?? "none"}`);
+}
+function orgDiff(cli, ctx, args) {
+  const f = parseFlags(args, (m) => cli.dieUsage(m), ["--org", "--version"]);
+  const target = repoArg(cli, ctx, f, "diff");
+  const { org, store } = storeArg(cli, ctx, f, "diff");
+  const pub = readPublished(store, f.version);
+  if (pub.kind !== "ok") cli.die(`org ${org}: ${pub.why}`);
+  const payload = allPayloadFiles(resolve6(ctx.scriptsDir, ".."), ctx.codeRoot);
+  const rows5 = planOrgInstall(target, pub.dir, pub.manifest, payload);
+  const inst = readInstalled(target);
+  const installedFiles = inst.kind === "ok" ? inst.org.files : {};
+  const planned = new Set(rows5.filter((r) => r.status !== "SKIP").map((r) => r.dest));
+  const removed = Object.keys(installedFiles).filter((p) => !planned.has(p));
+  const counts2 = { create: 0, update: 0, unchanged: 0, skip: 0 };
+  for (const r of rows5) {
+    counts2[r.status.toLowerCase()] += 1;
+    cli.say(`  ${r.status.padEnd(9)} ${r.dest}${r.why === "" ? "" : ` \u2014 ${r.why}`}`);
+  }
+  for (const p of removed) cli.say(`  STALE     ${p} \u2014 installed by ${inst.kind === "ok" ? `${inst.org.name} ${inst.org.version}` : "an earlier layer"}, not in ${pub.manifest.version}; a deploy leaves it and claims it no more`);
+  cli.data({ org, version: pub.manifest.version, installed: inst.kind === "ok" ? { name: inst.org.name, version: inst.org.version, org_sha: inst.org.org_sha } : null, rows: rows5, stale: removed, counts: counts2 });
+  const same = inst.kind === "ok" && inst.org.org_sha === pub.published.org_sha;
+  return cli.emit(`org diff ${target} against ${org} ${pub.manifest.version}: ${counts2.create} to create, ${counts2.update} to update, ${counts2.unchanged} unchanged, ${counts2.skip} skipped (base wins), ${removed.length} stale${same ? " \u2014 the installed layer is this version already" : ""}`);
+}
+function wiredChains(settingsDoc) {
+  const out = [];
+  const doc = asObject(settingsDoc);
+  const pre = doc === null ? null : asArray(field(doc, "hooks", "PreToolUse") ?? void 0);
+  for (const e of pre ?? []) {
+    const eo = asObject(e);
+    if (eo === null) continue;
+    const matcher = field(eo, "matcher");
+    const hooks = asArray(field(eo, "hooks") ?? void 0) ?? [];
+    const named = hooks.some((hk) => {
+      const args = asArray(field(asObject(hk) ?? {}, "args") ?? void 0);
+      return args !== null && typeof args[0] === "string" && args[0].endsWith("org-walls.mjs");
+    });
+    if (named && typeof matcher === "string") out.push(matcher);
+  }
+  return out;
+}
+function orgVerify(cli, ctx, args) {
+  const f = parseFlags(args, (m) => cli.dieUsage(m), ["--org", "--version"]);
+  const target = repoArg(cli, ctx, f, "verify");
+  cli.say(`=== ORG VERIFY -> ${target} (${ctx.today}) ===`);
+  const inst = readInstalled(target);
+  if (inst.kind === "absent") {
+    cli.data({ org: null, accepted: [], items: [] });
+    return cli.emit(`org verify: ${target} carries no organization layer \u2014 nothing to measure (harness deploy ${target} --org ORG installs one). Not a failure: a repo without a layer is unknown to it, not behind it.`);
+  }
+  let fails = 0;
+  const row = (name, ok, detail) => {
+    if (ok) cli.pass(name, detail);
+    else {
+      cli.fail(name, detail);
+      fails += 1;
+    }
+  };
+  if (inst.kind === "unreadable") {
+    row("org-manifest", false, `${target}/${ORG_FILE} ${inst.error} \u2014 the installed layer cannot be read; the org walls REFUSE every call until it is restored: harness deploy ${target} --org ORG`);
+    cli.data({ org: null, accepted: readAcceptances(target), items: [] });
+    return cli.emit(`org verify: ${target} is NOT well \u2014 ${fails} check(s) failed. Each FAIL line names the fix.`);
+  }
+  const o = inst.org;
+  row("org-manifest", true, `${o.name} ${o.version} (${o.org_sha.slice(0, 12)}), installed ${o.installed_at}`);
+  let changedTracked = "";
+  let changedFrozen = "";
+  let missing = "";
+  for (const [p, sha] of Object.entries(o.files)) {
+    const abs = join41(target, p);
+    if (!isFile(abs)) {
+      missing += ` ${p}`;
+      continue;
+    }
+    if (sha256File(abs) === sha) continue;
+    if (p.startsWith(".claude/rules/") || p.startsWith(".claude/skills/")) changedTracked += ` ${p}`;
+    else changedFrozen += ` ${p}`;
+  }
+  if (missing !== "" || changedFrozen !== "") {
+    row("org-files", false, `the organization layer in ${target} no longer matches what was installed.${missing === "" ? "" : ` MISSING:${missing}.`}${changedFrozen === "" ? "" : ` CHANGED:${changedFrozen}.`} Restore it: harness deploy ${target} --org ${o.name}.${changedTracked === "" ? "" : ` Rules or skills also vary:${changedTracked} \u2014 reported, not a failure.`}`);
+  } else if (changedTracked !== "") {
+    row("org-files", true, `all ${Object.keys(o.files).length} file(s) present; rules or skills vary from the installed version:${changedTracked} \u2014 variance, reported and never blocking (R-019); accept it with a reason (scrumux org accept) or restore it (harness deploy --org)`);
+  } else {
+    row("org-files", true, `all ${Object.keys(o.files).length} installed file(s) match ${ORG_FILE} byte for byte`);
+  }
+  const tset = join41(target, ".claude/settings.json");
+  let settingsDoc;
+  try {
+    settingsDoc = JSON.parse(readFileSync35(tset, "utf8"));
+  } catch {
+    settingsDoc = void 0;
+  }
+  const want = chainsFor(o.walls);
+  const have = wiredChains(settingsDoc);
+  const notWired = want.filter((c) => !have.includes(c));
+  const bundleOk = isFile(join41(target, ORG_BUNDLE));
+  const deadHook = hookTargets(settingsDoc).some((t) => t.file.endsWith("org-walls.mjs") && !isFile(expandProjectDir(t.file, target)));
+  if (!bundleOk || notWired.length > 0 || deadHook) {
+    row("org-walls-wired", false, `${o.walls.length} org wall(s) declared but ${!bundleOk ? `${ORG_BUNDLE} is not there` : notWired.length > 0 ? `settings.json wires no org hook on: ${notWired.join(", ")}` : "a hook names a bundle that is not there"} \u2014 every org wall is silently open here. Re-run harness deploy ${target} --org ${o.name}`);
+  } else {
+    row("org-walls-wired", true, `${ORG_BUNDLE} present and wired on ${want.join(", ")}`);
+  }
+  if (brokenSeals(join41(target, "governance")).includes("org.json")) {
+    row("org-accepted-seal", false, `${ORG_JOURNAL} does not match its seal in governance/seals.json \u2014 it was edited outside the CLI, and an acceptance nobody decided may be silencing a wall. Restore it from git; a real acceptance goes through scrumux org accept`);
+  }
+  let allowNow = [];
+  try {
+    allowNow = allowOf(settingsDoc).map((x) => String(x));
+  } catch {
+    allowNow = [];
+  }
+  const missingAllow = o.allow.filter((a) => !allowNow.includes(a));
+  if (missingAllow.length > 0) cli.warn("org-allow", `${missingAllow.length} org allow rule(s) absent from settings.json: ${missingAllow.join(" ")} \u2014 a dispatched session prompts on them; re-run harness deploy ${target} --org ${o.name}`);
+  else cli.pass("org-allow", `all ${o.allow.length} org allow rule(s) present in permissions.allow`);
+  let current = null;
+  if (f.org !== null) {
+    const { org, store } = storeArg(cli, ctx, f, "verify");
+    const pub = readPublished(store, f.version);
+    if (pub.kind !== "ok") cli.warn("org-current", `cannot compare with the store: ${pub.why}`);
+    else if (org !== o.name) cli.warn("org-current", `${target} carries ${o.name}, not ${org}`);
+    else if (pub.published.org_sha === o.org_sha) cli.pass("org-current", `${o.version} is the published ${pub.manifest.version}`);
+    else cli.warn("org-current", `behind: installed ${o.version} (${o.org_sha.slice(0, 12)}), published ${pub.manifest.version} (${pub.published.org_sha.slice(0, 12)}) \u2014 roll it out: harness deploy ${target} --org ${org}. Advisory: never moves the exit code.`);
+    current = pub.kind === "ok" ? { version: pub.manifest.version, org_sha: pub.published.org_sha, behind: pub.published.org_sha !== o.org_sha } : null;
+  }
+  const accepted2 = readAcceptances(target);
+  cli.note("org-accepted", accepted2.length === 0 ? "no accepted deviations in this repo" : accepted2.map((a) => `${a.item} by ${a.by} (${a.id}): ${a.reason}`).join("; "));
+  cli.data({
+    org: { name: o.name, version: o.version, org_sha: o.org_sha, installed_at: o.installed_at },
+    walls: wallsData(o.walls),
+    allow: o.allow,
+    items: o.items,
+    accepted: accepted2,
+    current,
+    wired: have,
+    missing_allow: missingAllow
+  });
+  return cli.emit(fails === 0 ? `org verify: ${target} carries ${o.name} ${o.version} and the layer is intact \u2014 ${4 - 0}/4 checks pass (warnings are advisory).` : `org verify: ${target} carries ${o.name} ${o.version} and the layer is NOT intact \u2014 ${fails} check(s) failed. Each FAIL line names the fix.`);
+}
+function orgPropose(cli, ctx, args) {
+  const f = parseFlags(args, (m) => cli.dieUsage(m), ["--file", "--why", "--by"]);
+  const target = repoArg(cli, ctx, f, "propose");
+  const itemName = f.positional[1];
+  if (itemName === void 0) cli.dieUsage("org propose needs the item (rule:<id>, skill:<id>, agent:<id>, wall:<id> or allow) \u2014 usage: scrumux org propose <repo> <item> --file F --why W --by WHO");
+  if (f.file === null || f.why === null || f.by === null) cli.dieUsage("org propose needs --file (the proposed text), --why (what it changes and why) and --by (who proposes)");
+  const inst = readInstalled(target);
+  if (inst.kind !== "ok") cli.die(inst.kind === "absent" ? `${target} carries no organization layer, so there is nothing to propose against` : `${target}/${ORG_FILE} ${inst.error}`);
+  const o = inst.org;
+  const known = /* @__PURE__ */ new Set([...o.items.map((i) => `${i.kind}:${i.id}`), ...o.walls.map((w) => `wall:${w.id}`), "allow"]);
+  if (!known.has(itemName) && !/^(rule|skill|agent|wall):[a-z0-9][a-z0-9-]*$/.test(itemName)) cli.die(`'${itemName}' is not an item name \u2014 <kind>:<id> with kind rule, skill, agent or wall, or 'allow'`);
+  const src = resolve6(ctx.cwd, f.file);
+  if (!isFile(src)) cli.die(`--file ${f.file} is not there`);
+  const store = storeOf(ctx.env, o.name);
+  ensureReadme(store);
+  const id = nextProposalId(store);
+  const text2 = readFileSync35(src, "utf8");
+  const path = writeProposal(store, { id, org: o.name, repo: target, item: itemName, why: f.why, by: f.by, at: ctx.today, text: text2, status: "proposed" });
+  appendHistory(store, { at: (/* @__PURE__ */ new Date()).toISOString(), act: "propose", by: f.by, authority: "none", why: f.why, before: null, after: null, detail: `${id} ${itemName} from ${target}${known.has(itemName) ? "" : " (a new item)"}` });
+  cli.data({ id, path, item: itemName, org: o.name });
+  cli.sayAlways(id);
+  return cli.emit(`recorded ${id}: a proposal for ${itemName} of ${o.name}, by ${f.by}. It binds nothing \u2014 a person reviews it in the app, drafts and publishes.`);
+}
+function orgDraft(cli, ctx, args) {
+  const f = parseFlags(args, (m) => cli.dieUsage(m), ["--org", "--from", "--by", "--why"]);
+  const { org, store } = storeArg(cli, ctx, f, "draft");
+  const itemName = f.positional[0];
+  if (itemName === void 0) cli.dieUsage("org draft needs the item (rule:<id>, skill:<id> or agent:<id>) \u2014 usage: scrumux org draft --org ORG <item> --from F --by WHO");
+  if (f.from === null || f.by === null) cli.dieUsage("org draft needs --from (the new text) and --by (who edits)");
+  const dir = join41(store, DRAFT);
+  const mp = join41(dir, "org.json");
+  if (!isFile(mp)) cli.die(`${org} has no draft (${mp}) \u2014 the store is created by hand or by scrumux org publish's first run from a draft; see docs/ORG-LAYER.md`);
+  const { manifest, problems } = parseManifest(readFileSync35(mp, "utf8"));
+  if (problems.length > 0) cli.die(`${mp} does not pass: ${problems[0]}`);
+  const it = sourceItems(manifest).find((x) => itemKey(x) === itemName);
+  if (it === void 0) cli.die(`${itemName} is not an item of ${org}'s draft \u2014 items: ${sourceItems(manifest).map(itemKey).join(", ")}. A new item is added to draft/org.json by hand.`);
+  const src = resolve6(ctx.cwd, f.from);
+  if (!isFile(src)) cli.die(`--from ${f.from} is not there`);
+  const dest = it.kind === "skill" ? join41(dir, it.dir, "SKILL.md.payload") : join41(dir, it.file);
+  const before = isFile(dest) ? sha256File(dest) : null;
+  mkdirSync11(resolve6(dest, ".."), { recursive: true });
+  writeFileSync16(dest, readFileSync35(src));
+  const after = sha256File(dest);
+  appendHistory(store, { at: (/* @__PURE__ */ new Date()).toISOString(), act: "draft", by: f.by, authority: "none", why: f.why ?? "", before, after, detail: `${itemName} -> ${dest.slice(store.length + 1)}` });
+  cli.data({ item: itemName, path: dest, before, after, changed: before !== after });
+  return cli.emit(before === after ? `${itemName}: the draft already held that text; nothing changed` : `${itemName}: draft updated (${dest.slice(store.length + 1)}); unpublished until scrumux org publish --org ${org}`);
+}
+function orgPublish(cli, ctx, args) {
+  const f = parseFlags(args, (m) => cli.dieUsage(m), ["--org", "--by", "--authority", "--note"]);
+  const { org, store } = storeArg(cli, ctx, f, "publish");
+  if (f.by === null) cli.die("org publish: --by is required \u2014 name who is publishing. A publish binds every repo deployed from it, so it is a person's act.");
+  refusing(cli, () => authorityGuard(join41(store, "governance"), f.authority ?? "", "org publish"));
+  const dir = join41(store, DRAFT);
+  const { manifest, problems } = packProblems(dir);
+  if (problems.length > 0) {
+    for (const p of problems) cli.fail("pack", p);
+    cli.die(`org publish refused: the draft of ${org} has ${problems.length} problem(s), each named above. Nothing was published.`);
+  }
+  if (manifest.name !== org) cli.die(`org publish refused: the draft names '${manifest.name}', the store is '${org}'`);
+  const files = hashTree(dir);
+  const orgSha = orgShaOf(files);
+  const dest = join41(store, PUBLISHED, manifest.version);
+  if (isDir(dest)) {
+    const prev = readPublished(store, manifest.version);
+    if (prev.kind === "ok" && prev.published.org_sha === orgSha) {
+      writeFileSync16(join41(store, CURRENT), `${manifest.version}
+`);
+      cli.data({ org, version: manifest.version, org_sha: orgSha, dir: dest, unchanged: true });
+      return cli.emit(`${org} ${manifest.version} was already published with these bytes; CURRENT points at it. Nothing rewritten.`);
+    }
+    cli.die(`org publish refused: ${org} ${manifest.version} is already published with different bytes, and a published version is immutable \u2014 bump "version" in ${dir}/org.json and publish again`);
+  }
+  ensureReadme(store);
+  mkdirSync11(dest, { recursive: true });
+  cpSync(join41(dir, "org.json"), join41(dest, "org.json"));
+  if (isDir(join41(dir, "pack"))) cpSync(join41(dir, "pack"), join41(dest, "pack"), { recursive: true });
+  const pub = {
+    schema: "scrumux.org/1",
+    name: org,
+    version: manifest.version,
+    published_at: ctx.today,
+    by: f.by,
+    authority: f.authority ?? "",
+    note: f.note ?? "",
+    org_sha: orgSha,
+    files
+  };
+  writeFileSync16(join41(dest, "MANIFEST.json"), `${JSON.stringify(pub, null, 2)}
+`);
+  const before = currentVersion(store);
+  const beforeSha = before === null ? null : (() => {
+    const r = readPublished(store, before);
+    return r.kind === "ok" ? r.published.org_sha : null;
+  })();
+  writeFileSync16(join41(store, CURRENT), `${manifest.version}
+`);
+  appendHistory(store, { at: (/* @__PURE__ */ new Date()).toISOString(), act: "publish", by: f.by, authority: f.authority ?? "", why: f.note ?? "", before: beforeSha, after: orgSha, detail: `${manifest.version}${before === null ? "" : ` (was ${before})`}: ${manifest.walls.length} wall(s), ${sourceItems(manifest).length} item(s), ${manifest.allow.length} allow rule(s)` });
+  cli.data({ org, version: manifest.version, org_sha: orgSha, dir: dest, previous: before, unchanged: false });
+  return cli.emit(`published ${org} ${manifest.version} (${orgSha.slice(0, 12)}) by ${f.by} under ${f.authority}; CURRENT now ${manifest.version}. Roll it out per repo: scrumux harness deploy <repo> --org ${org}`);
+}
+function orgAccept(cli, ctx, args) {
+  const f = parseFlags(args, (m) => cli.dieUsage(m), ["--reason", "--by", "--authority"]);
+  const target = repoArg(cli, ctx, f, "accept");
+  const itemName = f.positional[1];
+  if (itemName === void 0) cli.dieUsage("org accept needs the item \u2014 usage: scrumux org accept <repo> <item> --reason R --by WHO --authority direct|app:<session>|standing:D-XXXX");
+  if (f.reason === null || f.reason.trim() === "") cli.die("org accept: --reason is required \u2014 an accepted deviation nobody can read is one nobody can audit");
+  if (f.by === null) cli.die("org accept: --by is required \u2014 name who accepts; it is a person's act");
+  const gov = join41(target, "governance");
+  refusing(cli, () => authorityGuard(gov, f.authority ?? "", "org accept"));
+  const inst = readInstalled(target);
+  if (inst.kind !== "ok") cli.die(inst.kind === "absent" ? `${target} carries no organization layer, so there is nothing to accept a deviation from` : `${target}/${ORG_FILE} ${inst.error}`);
+  const o = inst.org;
+  const known = [...o.items.map((i) => `${i.kind}:${i.id}`), ...o.walls.map((w) => `wall:${w.id}`), "allow"];
+  if (!known.includes(itemName)) cli.die(`${itemName} is not an item of ${o.name} ${o.version} in ${target} \u2014 items: ${known.join(", ")}`);
+  const already = readAcceptances(target).find((a) => a.item === itemName);
+  if (already !== void 0) cli.die(`${itemName} is already accepted in ${target} (${already.id}, by ${already.by}: ${already.reason})`);
+  const jp = join41(gov, ORG_JOURNAL.slice("governance/".length));
+  refusing(cli, () => {
+    ensureFile(jp, '{"entries": []}');
+    sealBootstrap(gov, ctx.today);
+  });
+  const res = refusing(cli, () => appendWithId(
+    jp,
+    (doc) => (asArray(field(doc, "entries") ?? void 0) ?? []).filter((e) => field(e, "kind") === "accept").map((e) => field(e, "id") ?? null),
+    "OA",
+    (doc, id) => {
+      const d = asObject(doc) ?? {};
+      const entries = asArray(d["entries"]) ?? [];
+      return { ...d, entries: [...entries, { id, kind: "accept", item: itemName, reason: f.reason, by: f.by, authority: f.authority, date: ctx.today, org: o.name, org_version: o.version }] };
+    },
+    { gov, today: ctx.today, env: ctx.env }
+  ));
+  cli.data({ id: res.id, item: itemName, repo: target, org: o.name });
+  cli.sayAlways(res.id);
+  return cli.emit(`${res.id}: ${itemName} accepted in ${target} by ${f.by} under ${f.authority} \u2014 ${f.reason}. The org wall reads it; org verify and the app show it.`);
+}
+function orgDetach(cli, ctx, args) {
+  const f = parseFlags(args, (m) => cli.dieUsage(m), []);
+  const target = repoArg(cli, ctx, f, "detach");
+  const plan = planDetach(target);
+  if (plan === null) {
+    cli.data({ removed: [], commit_paths: [] });
+    return cli.emit(`org detach: ${target} carries no organization layer \u2014 nothing to remove`);
+  }
+  const r = detach(cli, target);
+  const who = plan.name === null ? "the organization layer" : `organization ${plan.name} ${plan.version ?? ""}`.trim();
+  cli.data({ org: plan.name, version: plan.version, removed: r.removed, hooks_unwired: r.hooks, allow_removed: r.allow, note: plan.note, commit_paths: r.commitPaths });
+  for (const p of r.removed) cli.say(`  removed ${p}`);
+  return cli.emit(`org detach: ${who} removed from ${target} \u2014 ${r.removed.length} file(s), ${r.hooks} hook entr${r.hooks === 1 ? "y" : "ies"}, ${r.allow} allow rule(s); .claude/DEPLOYED no longer claims it.${plan.note === null ? "" : ` Note: ${plan.note}.`} governance/org.json (acceptances) is kept: it records decisions a person took. Commit what commit_paths lists.`);
+}
+
+// src/nouns/org.ts
+var VERBS2 = ["show", "history", "diff", "verify", "propose", "draft", "publish", "accept", "detach"];
+var VERBS_TSV12 = "show	an organization's published or draft layer, or what a repo carries\nhistory	who changed the organization's layer, when, under which authority\ndiff	what deploying the published layer into a repo would change\nverify	is a repo's organization layer intact, wired and current\npropose	record a proposed change to an item; binds nothing\ndraft	replace an item's text in the draft\npublish	seal the draft as an immutable version \u2014 a person's act\naccept	accept a deviation in one repo, with a reason \u2014 a person's act\ndetach	remove the installed layer from a repo, leaving a no-org base deploy\n";
+var USAGE10 = NOUN_USAGE["org"] ?? "";
+function orgRun(cli, ctx, verb, args) {
+  const n = nounContext(ctx);
+  switch (verb) {
+    case "show":
+      return orgShow(cli, n, args);
+    case "history":
+      return orgHistory(cli, n, args);
+    case "diff":
+      return orgDiff(cli, n, args);
+    case "verify":
+      return orgVerify(cli, n, args);
+    case "propose":
+      return orgPropose(cli, n, args);
+    case "draft":
+      return orgDraft(cli, n, args);
+    case "publish":
+      return orgPublish(cli, n, args);
+    case "accept":
+      return orgAccept(cli, n, args);
+    case "detach":
+      return orgDetach(cli, n, args);
+    default:
+      return cli.dieUsage(`unknown verb '${verb}' for noun org \u2014 verbs: ${VERBS2.join(", ")}. See: scrumux help org`);
+  }
+}
+var MODULE12 = {
+  verbs: () => VERBS_TSV12,
+  usage: () => USAGE10,
+  run: orgRun
+};
+
 // src/nouns/rank.ts
-import { existsSync as existsSync13, readFileSync as readFileSync29 } from "node:fs";
-import { join as join37 } from "node:path";
-var VERBS_TSV12 = `set	move a backlog item to a position
+import { existsSync as existsSync17, readFileSync as readFileSync36 } from "node:fs";
+import { join as join42 } from "node:path";
+var VERBS_TSV13 = `set	move a backlog item to a position
 clear	return an item to never-prioritised
 `;
 function rows2(path) {
-  if (!existsSync13(path)) return [];
+  if (!existsSync17(path)) return [];
   try {
-    const doc = parsePreservingNumbers(readFileSync29(path, "utf8"));
+    const doc = parsePreservingNumbers(readFileSync36(path, "utf8"));
     if (doc === null || typeof doc !== "object" || Array.isArray(doc)) return [];
     const e = doc["entries"];
     return Array.isArray(e) ? e : [];
@@ -9513,8 +11269,8 @@ function rankImpl(cli, ctx, ictx, ref, newposRaw, clear) {
     if (newpos < 1) cli.die("scrumux rank: new-# must be >= 1");
   }
   if (ref.startsWith("F-")) {
-    const design = join37(ctx.gov, "design.json");
-    if (!existsSync13(design)) cli.die("scrumux rank: no design.json yet \u2014 nothing to rank");
+    const design = join42(ctx.gov, "design.json");
+    if (!existsSync17(design)) cli.die("scrumux rank: no design.json yet \u2014 nothing to rank");
     const isFeature = (r) => {
       const o = obj3(r);
       return o !== null && o["kind"] === "feature" ? o["id"] : void 0;
@@ -9548,8 +11304,8 @@ function rankImpl(cli, ctx, ictx, ref, newposRaw, clear) {
     sealBootstrap(ctx.gov, ctx.today);
     return cli.emit(clear ? `${ref} -> rank cleared` : `${ref} -> rank ${newpos}`);
   }
-  const tasks = join37(ctx.gov, "tasks.json");
-  if (!existsSync13(tasks)) cli.die("scrumux rank: no tasks.json yet \u2014 nothing to rank");
+  const tasks = join42(ctx.gov, "tasks.json");
+  if (!existsSync17(tasks)) cli.die("scrumux rank: no tasks.json yet \u2014 nothing to rank");
   const all = rows2(tasks);
   const open = all.filter((r) => {
     const o = obj3(r);
@@ -9599,8 +11355,8 @@ function rankImpl(cli, ctx, ictx, ref, newposRaw, clear) {
   sealBootstrap(ctx.gov, ctx.today);
   return cli.emit(`${tid} -> rank ${newpos}`);
 }
-var MODULE12 = {
-  verbs: () => VERBS_TSV12,
+var MODULE13 = {
+  verbs: () => VERBS_TSV13,
   usage: () => NOUN_USAGE["rank"] ?? "",
   run(cli, ictx, verb, args) {
     const ctx = nounContext(ictx);
@@ -9624,10 +11380,10 @@ var MODULE12 = {
 };
 
 // src/nouns/records.ts
-import { existsSync as existsSync14, readFileSync as readFileSync30, readdirSync as readdirSync4 } from "node:fs";
-import { join as join38 } from "node:path";
-var VERBS_TSV13 = "check	validate the journals, refs, rule chains, rosters and seals\n";
-var USAGE10 = `scrumux records \u2014 the repo validator.
+import { existsSync as existsSync18, readFileSync as readFileSync37, readdirSync as readdirSync6 } from "node:fs";
+import { join as join43 } from "node:path";
+var VERBS_TSV14 = "check	validate the journals, refs, rule chains, rosters and seals\n";
+var USAGE11 = `scrumux records \u2014 the repo validator.
 
   scrumux records check                    the governance sweep (default)
   scrumux records check --structure        the same, named explicitly
@@ -9715,9 +11471,9 @@ function frontmatterList(fm, key) {
   return out;
 }
 function loadJournal2(path) {
-  if (!existsSync14(path) || !isFile(path)) return { path, doc: null, broken: false };
+  if (!existsSync18(path) || !isFile(path)) return { path, doc: null, broken: false };
   try {
-    return { path, doc: parsePreservingNumbers(readFileSync30(path, "utf8")), broken: false };
+    return { path, doc: parsePreservingNumbers(readFileSync37(path, "utf8")), broken: false };
   } catch {
     return { path, doc: null, broken: true };
   }
@@ -9785,7 +11541,7 @@ function recordsCheck(cli, ctx, argv) {
   const sweepStructure = () => {
     human(`=== VALIDATE \u2014 structure (${ctx.today}) ===`);
     for (const name of govJsonFiles(gov)) {
-      const p = join38(gov, name);
+      const p = join43(gov, name);
       const j = loadJournal2(p);
       if (j.broken) {
         f(`${p} is not valid JSON \u2014 restore from git (git checkout -- ${p}) or repair by hand, then re-run`);
@@ -9806,13 +11562,13 @@ function recordsCheck(cli, ctx, argv) {
         f(`${p} has duplicate ids: ${dupText} \u2014 ids are allocated by scrumux; hand-edits must not reuse them`);
       }
     }
-    const tasksJ = loadJournal2(join38(gov, "tasks.json"));
-    const designJ = loadJournal2(join38(gov, "design.json"));
-    const decJ = loadJournal2(join38(gov, "decisions.json"));
-    const issJ = loadJournal2(join38(gov, "issues.json"));
-    const logJ = loadJournal2(join38(gov, "log.json"));
-    const sprJ = loadJournal2(join38(gov, "sprints.json"));
-    const healthJ = loadJournal2(join38(gov, "repo-health.json"));
+    const tasksJ = loadJournal2(join43(gov, "tasks.json"));
+    const designJ = loadJournal2(join43(gov, "design.json"));
+    const decJ = loadJournal2(join43(gov, "decisions.json"));
+    const issJ = loadJournal2(join43(gov, "issues.json"));
+    const logJ = loadJournal2(join43(gov, "log.json"));
+    const sprJ = loadJournal2(join43(gov, "sprints.json"));
+    const healthJ = loadJournal2(join43(gov, "repo-health.json"));
     const des = designView(designJ.doc);
     const featureIds = idsOf(des["features"]);
     const storyIds = idsOf(des["stories"]);
@@ -10074,11 +11830,11 @@ function recordsCheck(cli, ctx, argv) {
       }
       return out;
     });
-    for (const r of globFiles(join38(root, hd, "rules"), (n2) => n2.endsWith(".md"))) {
+    for (const r of globFiles(join43(root, hd, "rules"), (n2) => n2.endsWith(".md"))) {
       const rb = r.split("/").pop();
       let text2;
       try {
-        text2 = readFileSync30(r, "utf8");
+        text2 = readFileSync37(r, "utf8");
       } catch {
         continue;
       }
@@ -10090,17 +11846,17 @@ function recordsCheck(cli, ctx, argv) {
       if (!fm.some((l) => l.startsWith("name:"))) f(`rules: ${rb} frontmatter missing name`);
       if (!fm.some((l) => l.startsWith("paths:"))) f(`rules: ${rb} frontmatter missing paths`);
       for (const s2 of frontmatterList(fm, "skills")) {
-        if (!isFile(join38(root, hd, "skills", s2, "SKILL.md"))) {
+        if (!isFile(join43(root, hd, "skills", s2, "SKILL.md"))) {
           w(`rules: ${rb} points to skill '${s2}' not in this repo's ${hd}/skills \u2014 fine if user-level; if not, it is drift`);
         }
       }
       for (const s2 of frontmatterList(fm, "scripts")) {
-        if (!isFile(join38(root, s2))) {
+        if (!isFile(join43(root, s2))) {
           f(`rules: ${rb} points to script ${s2} which does not exist \u2014 fix the pointer or restore the script`);
         }
       }
       for (const s2 of frontmatterList(fm, "hooks")) {
-        if (!isFile(join38(root, s2))) {
+        if (!isFile(join43(root, s2))) {
           f(`rules: ${rb} points to hook ${s2} which does not exist \u2014 fix the pointer or restore the hook`);
         }
       }
@@ -10125,18 +11881,18 @@ function recordsCheck(cli, ctx, argv) {
           tok = rest.split(" ")[0] ?? "";
         }
         if (!tok.includes("/")) continue;
-        const p = tok.startsWith("/") ? tok : join38(root, tok);
-        if (!existsSync14(p)) {
+        const p = tok.startsWith("/") ? tok : join43(root, tok);
+        if (!existsSync18(p)) {
           f(
             `repo-health: check '${name}' runs '${cmd}' but ${tok} is not on disk \u2014 de-register the check (scrumux repair journal repo-health.json) or restore the file`
           );
         }
       }
     }
-    const spec = join38(root, "PROJECT_SPEC.MD");
-    const skidx = join38(root, "SKILLS_INDEX.MD");
+    const spec = join43(root, "PROJECT_SPEC.MD");
+    const skidx = join43(root, "SKILLS_INDEX.MD");
     if (isFile(spec)) {
-      const specText = readFileSync30(spec, "utf8");
+      const specText = readFileSync37(spec, "utf8");
       const rosters = {};
       for (const sec of ["Agents", "Skills", "Rules"]) {
         const got = rosterSection(specText, sec);
@@ -10158,8 +11914,8 @@ function recordsCheck(cli, ctx, argv) {
       } else {
         rosters["Scripts"] = scripts;
       }
-      const idxLines = isFile(skidx) ? readFileSync30(skidx, "utf8").split("\n") : null;
-      for (const a of globFiles(join38(root, hd, "agents"), (n2) => n2.endsWith(".md"))) {
+      const idxLines = isFile(skidx) ? readFileSync37(skidx, "utf8").split("\n") : null;
+      for (const a of globFiles(join43(root, hd, "agents"), (n2) => n2.endsWith(".md"))) {
         const ab = basenameNoExt(a, ".md");
         if (!rosterNames(rosters["Agents"], ab)) {
           f(
@@ -10167,7 +11923,7 @@ function recordsCheck(cli, ctx, argv) {
           );
         }
       }
-      for (const s2 of globDirs(join38(root, hd, "skills"))) {
+      for (const s2 of globDirs(join43(root, hd, "skills"))) {
         const sb = s2.split("/").pop();
         if (!rosterNames(rosters["Skills"], sb)) {
           f(
@@ -10178,7 +11934,7 @@ function recordsCheck(cli, ctx, argv) {
           f(`skills index drift: ${sb} exists in ${hd}/skills/ but SKILLS_INDEX.MD does not list it \u2014 add its row`);
         }
       }
-      for (const r of globFiles(join38(root, hd, "rules"), (n2) => n2.endsWith(".md"))) {
+      for (const r of globFiles(join43(root, hd, "rules"), (n2) => n2.endsWith(".md"))) {
         const rb = basenameNoExt(r, ".md");
         if (!rosterNames(rosters["Rules"], rb)) {
           f(
@@ -10186,7 +11942,7 @@ function recordsCheck(cli, ctx, argv) {
           );
         }
       }
-      for (const sc of globFiles(join38(root, hd, "scripts"), () => true)) {
+      for (const sc of globFiles(join43(root, hd, "scripts"), () => true)) {
         const scb = sc.split("/").pop();
         if (scb.startsWith(".")) continue;
         if (!rosterNames(rosters["Scripts"], scb)) {
@@ -10206,7 +11962,7 @@ function recordsCheck(cli, ctx, argv) {
         `${shape} \u2014 restore it from git, or rebuild it with a gov write after checking the journals by hand. Until then this check is not speaking for any journal (T-0100/I-0047)`
       );
     }
-    const sealsPath = join38(gov, SEAL_FILE_NAME);
+    const sealsPath = join43(gov, SEAL_FILE_NAME);
     const sealsDoc = loadJournal2(sealsPath);
     const over = sealsDoc.doc === null ? null : field(sealsDoc.doc, "bootstrapped_over_existing_content");
     if (over !== null && truthy(over) && interp(over) !== "") {
@@ -10218,7 +11974,7 @@ function recordsCheck(cli, ctx, argv) {
       let unsealed = "";
       const map = sealsDoc.doc === null ? null : asObject(field(sealsDoc.doc, "journals"));
       for (const sj of SEALED_JOURNALS) {
-        if (!isFile(join38(gov, sj))) continue;
+        if (!isFile(join43(gov, sj))) continue;
         if (map === null || !Object.prototype.hasOwnProperty.call(map, sj)) unsealed += ` ${sj}`;
       }
       if (unsealed !== "") {
@@ -10232,7 +11988,7 @@ function recordsCheck(cli, ctx, argv) {
         `governance/${b} was changed outside scrumux \u2014 its content does not match the seal recorded by the last gov write. If the change was intentional, make it with scrumux repair journal ${b} --apply '<jq>' --why '...' so the correction carries its own record; if not, restore it from git (T-0100/I-0047)`
       );
     }
-    if (isFile(join38(gov, "tasks.json"))) {
+    if (isFile(join43(gov, "tasks.json"))) {
       const noAuth = ents(tasksJ).filter((e) => {
         const acc = field(e, "acceptance");
         return acc !== null && field(acc, "accepted") === true && strOr(field(acc, "authority")).length === 0;
@@ -10243,7 +11999,7 @@ function recordsCheck(cli, ctx, argv) {
         );
       }
     }
-    if (isFile(join38(gov, "sprints.json"))) {
+    if (isFile(join43(gov, "sprints.json"))) {
       const noRAuth = ents(sprJ).filter((e) => {
         const r = field(e, "ratified");
         return r !== null && strOr(field(r, "authority")).length === 0;
@@ -10254,7 +12010,7 @@ function recordsCheck(cli, ctx, argv) {
         );
       }
     }
-    if (isFile(join38(gov, "issues.json"))) {
+    if (isFile(join43(gov, "issues.json"))) {
       const selfv = ents(issJ).filter((e) => {
         const v = field(e, "validation");
         const src = field(e, "source");
@@ -10320,9 +12076,9 @@ function schemaSweep(ctx, f, w) {
     );
   }
 }
-var MODULE13 = {
-  verbs: () => VERBS_TSV13,
-  usage: () => USAGE10,
+var MODULE14 = {
+  verbs: () => VERBS_TSV14,
+  usage: () => USAGE11,
   run(cli, ctx, verb, args) {
     switch (verb) {
       case "check":
@@ -10337,20 +12093,20 @@ var MODULE13 = {
 function globFiles(dir, keep) {
   let names;
   try {
-    names = readdirSync4(dir);
+    names = readdirSync6(dir);
   } catch {
     return [];
   }
-  return names.filter((n) => !n.startsWith(".")).filter(keep).sort(cmpString).map((n) => join38(dir, n)).filter(isFile);
+  return names.filter((n) => !n.startsWith(".")).filter(keep).sort(cmpString).map((n) => join43(dir, n)).filter(isFile);
 }
 function globDirs(dir) {
   let names;
   try {
-    names = readdirSync4(dir);
+    names = readdirSync6(dir);
   } catch {
     return [];
   }
-  return names.filter((n) => !n.startsWith(".")).sort(cmpString).map((n) => join38(dir, n)).filter(isDir);
+  return names.filter((n) => !n.startsWith(".")).sort(cmpString).map((n) => join43(dir, n)).filter(isDir);
 }
 function basenameNoExt(p, ext) {
   const b = p.split("/").pop();
@@ -10359,10 +12115,10 @@ function basenameNoExt(p, ext) {
 
 // src/nouns/repair.ts
 import { spawnSync as spawnSync9 } from "node:child_process";
-import { createHash as createHash2 } from "node:crypto";
-import { readFileSync as readFileSync31 } from "node:fs";
-import { join as join39 } from "node:path";
-var VERBS_TSV14 = `journal	a bounded correction to one journal, with its own log entry
+import { createHash as createHash4 } from "node:crypto";
+import { readFileSync as readFileSync38 } from "node:fs";
+import { join as join44 } from "node:path";
+var VERBS_TSV15 = `journal	a bounded correction to one journal, with its own log entry
 `;
 var SEED6 = '{"entries": []}';
 function repairImpl(cli, ctx, ictx, argv) {
@@ -10403,7 +12159,7 @@ function repairImpl(cli, ctx, ictx, argv) {
       "repair: --by is required \u2014 name who is repairing. It defaulted to User, which is the wrong name to put on the most consequential write in the CLI."
     );
   }
-  const path = join39(ctx.gov, jf);
+  const path = join44(ctx.gov, jf);
   if (!isFile(path)) cli.die(`repair: no journal at governance/${jf}`);
   const before = sealOf(path);
   const r = spawnSync9("jq", [expr, path], { encoding: "utf8" });
@@ -10417,7 +12173,7 @@ function repairImpl(cli, ctx, ictx, argv) {
   if (produced.length === 0) {
     cli.die(`repair: the jq expression produced NO output, which would truncate governance/${jf} \u2014 check the filter`);
   }
-  const would = createHash2("sha256").update(Buffer.from(produced, "utf8")).digest("hex");
+  const would = createHash4("sha256").update(Buffer.from(produced, "utf8")).digest("hex");
   if (before === would) {
     cli.die(
       `repair: the expression changed nothing in governance/${jf} \u2014 check the filter rather than recording a no-op repair`
@@ -10450,7 +12206,7 @@ function repairImpl(cli, ctx, ictx, argv) {
 }
 function entryCount(path) {
   try {
-    const doc = parsePreservingNumbers(readFileSync31(path, "utf8"));
+    const doc = parsePreservingNumbers(readFileSync38(path, "utf8"));
     if (doc === null || typeof doc !== "object" || Array.isArray(doc)) return 0;
     const e = doc["entries"];
     return Array.isArray(e) ? e.length : 0;
@@ -10459,7 +12215,7 @@ function entryCount(path) {
   }
 }
 function logRepair(cli, ctx, io, r) {
-  const path = join39(ctx.gov, "log.json");
+  const path = join44(ctx.gov, "log.json");
   const record = {
     date: ctx.today,
     task: null,
@@ -10494,8 +12250,8 @@ function logRepair(cli, ctx, io, r) {
     io.exit(2);
   }
 }
-var MODULE14 = {
-  verbs: () => VERBS_TSV14,
+var MODULE15 = {
+  verbs: () => VERBS_TSV15,
   usage: () => NOUN_USAGE["repair"] ?? "",
   run(cli, ictx, verb, args) {
     const ctx = nounContext(ictx);
@@ -10519,16 +12275,326 @@ function firstLine(s2) {
   return i < 0 ? s2 : s2.slice(0, i);
 }
 
+// src/nouns/repo-gov/verbs.ts
+import { readFileSync as readFileSync39, writeFileSync as writeFileSync17 } from "node:fs";
+import { join as join45, resolve as resolve7 } from "node:path";
+var TAKES_VALUE2 = /* @__PURE__ */ new Set(["--file", "--why", "--by", "--authority", "--reason", "--note"]);
+function parseFlags2(args, die, allowed) {
+  const f = { positional: [], file: null, why: null, by: null, authority: null, reason: null, note: null };
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i];
+    if (!a.startsWith("--")) {
+      f.positional.push(a);
+      continue;
+    }
+    if (!allowed.includes(a) || !TAKES_VALUE2.has(a)) die(`unknown flag ${a} \u2014 see: scrumux help repo-gov`);
+    const v = args[i + 1];
+    if (v === void 0 || v.startsWith("--")) die(`${a} needs a value \u2014 see: scrumux help repo-gov`);
+    i += 1;
+    f[a.slice(2)] = v;
+  }
+  return f;
+}
+function repoArg2(cli, ctx, f, verb) {
+  const t = f.positional[0];
+  if (t === void 0) cli.dieUsage(`repo-gov ${verb} needs a target repo \u2014 usage: scrumux repo-gov ${verb} <repo> ...`);
+  const abs = resolve7(ctx.cwd, t);
+  if (!isDir(abs)) cli.die(`target ${t} is not a directory`);
+  return abs;
+}
+var entryData = (e) => e === null ? null : { ...e };
+var entriesData = (es) => es.map((e) => ({ ...e }));
+function entriesOf3(cli, target) {
+  const j = readJournal2(target);
+  if (j.kind === "unreadable") cli.die(`${target}/${REPO_GOV_JOURNAL} ${j.error} \u2014 restore it from git`);
+  return j.kind === "ok" ? j.entries : [];
+}
+function repoGovShow(cli, ctx, args) {
+  const f = parseFlags2(args, (m2) => cli.dieUsage(m2), []);
+  const target = repoArg2(cli, ctx, f, "show");
+  const m = measure(target);
+  const entries = m.state === "broken" ? [] : entriesOf3(cli, target);
+  const proposals = proposalsOf(entries);
+  cli.data({
+    repo: target,
+    state: m.state,
+    current: entryData(m.current),
+    addendum: m.addendum === null ? null : { text: m.addendum.text, sha256: m.addendum.sha256 },
+    proposals: entriesData(proposals),
+    history: entriesData(entries),
+    detail: m.detail
+  });
+  if (m.state === "broken") return cli.emit(`repo-gov show: ${m.detail}`);
+  const open = proposals.filter((p) => p.status === "proposed").length;
+  return cli.emit(`${target}: ${m.detail}; ${proposals.length} proposal(s), ${open} open; ${entries.length} journal entr${entries.length === 1 ? "y" : "ies"}`);
+}
+function repoGovDiff(cli, ctx, args) {
+  const f = parseFlags2(args, (m2) => cli.dieUsage(m2), ["--file"]);
+  const target = repoArg2(cli, ctx, f, "diff");
+  const m = measure(target);
+  if (m.state === "broken") cli.die(m.detail);
+  let candidate;
+  let source;
+  if (f.file !== null) {
+    const src = resolve7(ctx.cwd, f.file);
+    if (!isFile(src)) cli.die(`--file ${f.file} is not there`);
+    candidate = normaliseText(readFileSync39(src, "utf8"));
+    source = f.file;
+  } else {
+    candidate = m.addendum?.text ?? null;
+    source = "the section in CLAUDE.md";
+  }
+  const current = m.current?.text === void 0 || m.current?.text === null ? null : normaliseText(m.current.text);
+  const same = candidate === current;
+  cli.data({ repo: target, same, source, current, candidate, current_id: m.current?.id ?? null });
+  if (same) return cli.emit(`repo-gov diff: ${source} is what ${m.current?.id ?? "nothing"} published \u2014 no change`);
+  if (current === null) return cli.emit(`repo-gov diff: nothing is published; ${source} would be the first addendum (${candidate === null ? "empty" : `${candidate.length} chars`})`);
+  if (candidate === null) return cli.emit(`repo-gov diff: ${m.current?.id} is published and CLAUDE.md carries no section \u2014 a publish would restore it`);
+  const a = current.split("\n");
+  const b = candidate.split("\n");
+  const removed = a.filter((l) => !b.includes(l));
+  const added = b.filter((l) => !a.includes(l));
+  for (const l of removed) cli.say(`- ${l}`);
+  for (const l of added) cli.say(`+ ${l}`);
+  return cli.emit(`repo-gov diff: ${source} differs from ${m.current?.id}: ${added.length} line(s) added, ${removed.length} removed`);
+}
+function repoGovVerify(cli, ctx, args) {
+  const f = parseFlags2(args, (m2) => cli.dieUsage(m2), []);
+  const target = repoArg2(cli, ctx, f, "verify");
+  cli.say(`=== REPO-GOV VERIFY -> ${target} (${ctx.today}) ===`);
+  const m = measure(target);
+  let fails = 0;
+  if (m.state === "broken") {
+    cli.fail("repo-governance-journal", m.detail);
+    fails += 1;
+  } else {
+    const j = readJournal2(target);
+    const n = j.kind === "ok" ? j.entries.length : 0;
+    cli.pass("repo-governance-journal", j.kind === "absent" ? "no journal yet \u2014 nothing published, nothing proposed (not a failure)" : `${REPO_GOV_JOURNAL} parses: ${n} entr${n === 1 ? "y" : "ies"}`);
+  }
+  if (m.state === "current" || m.state === "none") cli.pass("repo-governance-addendum", m.detail);
+  else if (m.state !== "broken") cli.warn("repo-governance-addendum", m.detail);
+  if (brokenSeals(join45(target, "governance")).includes("repo-governance.json")) {
+    cli.fail("repo-governance-seal", `${REPO_GOV_JOURNAL} does not match its seal in governance/seals.json \u2014 it was edited outside the CLI; a publish nobody made may be in force. Restore it from git, or re-publish through scrumux repo-gov publish`);
+    fails += 1;
+  }
+  const entries = m.state === "broken" ? [] : entriesOf3(cli, target);
+  const open = proposalsOf(entries).filter((p) => p.status === "proposed");
+  if (open.length > 0) cli.warn("repo-governance-proposals", `${open.length} proposal(s) waiting on a person: ${open.map((p) => p.id).join(", ")} \u2014 accept or reject them (scrumux repo-gov accept|reject)`);
+  cli.data({ repo: target, state: m.state, current: entryData(m.current), addendum: m.addendum === null ? null : { sha256: m.addendum.sha256 }, open: open.map((p) => p.id) });
+  return cli.emit(fails === 0 ? `repo-gov verify: ${target} \u2014 ${m.state === "none" ? "no repo governance" : m.state === "current" ? "the addendum is what was published" : `variance (${m.state}), reported and never blocking`}` : `repo-gov verify: ${target} is NOT well \u2014 ${fails} check(s) failed. The FAIL line names the fix.`);
+}
+function repoGovPropose(cli, ctx, args) {
+  const f = parseFlags2(args, (m) => cli.dieUsage(m), ["--file", "--why", "--by"]);
+  const target = repoArg2(cli, ctx, f, "propose");
+  if (f.file === null || f.why === null || f.by === null) cli.dieUsage("repo-gov propose needs --file (the proposed addendum), --why (what it changes and why) and --by (who proposes)");
+  const src = resolve7(ctx.cwd, f.file);
+  if (!isFile(src)) cli.die(`--file ${f.file} is not there`);
+  const text2 = normaliseText(readFileSync39(src, "utf8"));
+  if (text2.trim() === "") cli.die("the proposed addendum is empty");
+  const gov = join45(target, "governance");
+  const jp = join45(target, REPO_GOV_JOURNAL);
+  refusing(cli, () => {
+    ensureFile(jp, REPO_GOV_TEMPLATE);
+    sealBootstrap(gov, ctx.today);
+  });
+  const res = refusing(cli, () => appendWithId(
+    jp,
+    (doc) => (asArray(field(doc, "entries") ?? void 0) ?? []).filter((e) => field(e, "kind") === "propose").map((e) => field(e, "id") ?? null),
+    "RP",
+    (doc, id) => {
+      const d = asObject(doc) ?? {};
+      const entries = asArray(d["entries"]) ?? [];
+      return { ...d, entries: [...entries, { id, kind: "propose", text: text2, sha256: addendumSha(text2), why: f.why, by: f.by, date: ctx.today }] };
+    },
+    { gov, today: ctx.today, env: ctx.env }
+  ));
+  cli.data({ id: res.id, repo: target, commit_paths: [REPO_GOV_JOURNAL] });
+  cli.sayAlways(res.id);
+  return cli.emit(`recorded ${res.id}: a proposed addendum for ${target}, by ${f.by}. It binds nothing \u2014 a person accepts or rejects it (scrumux repo-gov accept|reject ${target} ${res.id} ...).`);
+}
+function publishText(cli, ctx, target, text2, by, authority, note, from) {
+  const gov = join45(target, "governance");
+  refusing(cli, () => authorityGuard(gov, authority, from === null ? "repo-gov publish" : "repo-gov accept"));
+  if (!isFile(join45(target, ".claude/DEPLOYED"))) cli.die(`${target} carries no .claude/DEPLOYED, so it is not a harnessed repo \u2014 the addendum is an addendum to the harness's constitution; deploy the harness first (scrumux harness deploy ${target})`);
+  const cp = join45(target, "CLAUDE.md");
+  if (!isFile(cp)) cli.die(`${target}/CLAUDE.md is not there \u2014 re-run scrumux harness deploy ${target}`);
+  const current = readFileSync39(cp);
+  const split = splitAddendum(current);
+  if (!split.head.toString("utf8").includes(OURS_MARKER)) cli.die(`${target}/CLAUDE.md is not the constitution a deploy wrote \u2014 the addendum is appended to that and nothing else; run scrumux harness sequester ${target}, then deploy`);
+  const problems = loosenProblems(text2, target);
+  if (problems.length > 0) {
+    for (const p of problems) cli.fail("repo-governance-scope", p);
+    cli.die(`repo-gov ${from === null ? "publish" : "accept"}: the addendum ${problems.length === 1 ? "is" : "are"} refused \u2014 ${problems.length} problem(s) above. The repo tier adds to its own repo; it never speaks for a base or organization wall.`);
+  }
+  for (const a of adviseProblems(text2)) cli.warn("repo-governance-advice", a);
+  const entries = entriesOf3(cli, target);
+  const cur = currentPublish(entries);
+  const sha = addendumSha(text2);
+  if (cur !== null && cur.sha256 === sha && split.text !== null && addendumSha(split.text) === sha) cli.die(`${cur.id} already says exactly that and CLAUDE.md carries it \u2014 nothing to publish`);
+  const jp = join45(target, REPO_GOV_JOURNAL);
+  refusing(cli, () => {
+    ensureFile(jp, REPO_GOV_TEMPLATE);
+    sealBootstrap(gov, ctx.today);
+  });
+  const res = refusing(cli, () => appendWithId(
+    jp,
+    (doc) => (asArray(field(doc, "entries") ?? void 0) ?? []).filter((e) => field(e, "kind") === "publish").map((e) => field(e, "id") ?? null),
+    "RG",
+    (doc, id) => {
+      const d = asObject(doc) ?? {};
+      const es = asArray(d["entries"]) ?? [];
+      return { ...d, entries: [...es, { id, kind: "publish", text: text2, sha256: sha, by, authority, note, from, date: ctx.today, supersedes: cur?.id ?? null }] };
+    },
+    { gov, today: ctx.today, env: ctx.env }
+  ));
+  try {
+    writeFileSync17(cp, Buffer.concat([split.head, Buffer.from(renderAddendum(text2))]));
+  } catch {
+    cli.die(`${res.id} is recorded but ${cp} could not be written \u2014 fix the permission and re-run the same publish`);
+  }
+  cli.data({ id: res.id, repo: target, sha256: sha, from, supersedes: cur?.id ?? null, commit_paths: ["CLAUDE.md", REPO_GOV_JOURNAL] });
+  cli.sayAlways(res.id);
+  return cli.emit(`${res.id}: repo governance addendum published in ${target} by ${by} under ${authority}${from === null ? "" : ` (accepting ${from})`}${cur === null ? "" : `, superseding ${cur.id}`}. CLAUDE.md carries it at its end; commit CLAUDE.md and ${REPO_GOV_JOURNAL}.`);
+}
+function repoGovPublish(cli, ctx, args) {
+  const f = parseFlags2(args, (m) => cli.dieUsage(m), ["--file", "--by", "--authority", "--note"]);
+  const target = repoArg2(cli, ctx, f, "publish");
+  if (f.file === null) cli.dieUsage("repo-gov publish needs --file (the addendum text) \u2014 usage: scrumux repo-gov publish <repo> --file F --by WHO --authority direct|app:<session>|standing:D-XXXX [--note N]");
+  if (f.by === null) cli.die("repo-gov publish: --by is required \u2014 name who publishes; it is a person's act");
+  const src = resolve7(ctx.cwd, f.file);
+  if (!isFile(src)) cli.die(`--file ${f.file} is not there`);
+  const text2 = normaliseText(readFileSync39(src, "utf8"));
+  if (text2.trim() === "") cli.die("the addendum is empty \u2014 to remove one, say so in a published addendum rather than publishing nothing");
+  return publishText(cli, ctx, target, text2, f.by, f.authority ?? "", f.note, null);
+}
+function proposalArg(cli, target, f, verb) {
+  const id = f.positional[1];
+  if (id === void 0) cli.dieUsage(`repo-gov ${verb} needs the proposal id \u2014 usage: scrumux repo-gov ${verb} <repo> RP-NNNN ...`);
+  const p = proposalsOf(entriesOf3(cli, target)).find((x) => x.id === id);
+  if (p === void 0) cli.die(`${id} is not a proposal in ${target}/${REPO_GOV_JOURNAL}`);
+  if (p.status !== "proposed") cli.die(`${id} was already ${p.status} (${p.outcome})`);
+  return p;
+}
+function repoGovAccept(cli, ctx, args) {
+  const f = parseFlags2(args, (m) => cli.dieUsage(m), ["--by", "--authority", "--note"]);
+  const target = repoArg2(cli, ctx, f, "accept");
+  if (f.by === null) cli.die("repo-gov accept: --by is required \u2014 name who accepts; it is a person's act");
+  const p = proposalArg(cli, target, f, "accept");
+  if (p.text === null || p.text.trim() === "") cli.die(`${p.id} carries no text`);
+  return publishText(cli, ctx, target, normaliseText(p.text), f.by, f.authority ?? "", f.note, p.id);
+}
+function repoGovReject(cli, ctx, args) {
+  const f = parseFlags2(args, (m) => cli.dieUsage(m), ["--reason", "--by", "--authority"]);
+  const target = repoArg2(cli, ctx, f, "reject");
+  if (f.reason === null || f.reason.trim() === "") cli.die("repo-gov reject: --reason is required \u2014 a rejection nobody can read is one nobody can learn from");
+  if (f.by === null) cli.die("repo-gov reject: --by is required \u2014 name who rejects; it is a person's act");
+  const gov = join45(target, "governance");
+  refusing(cli, () => authorityGuard(gov, f.authority ?? "", "repo-gov reject"));
+  const p = proposalArg(cli, target, f, "reject");
+  const jp = join45(target, REPO_GOV_JOURNAL);
+  refusing(cli, () => {
+    sealBootstrap(gov, ctx.today);
+  });
+  const res = refusing(cli, () => appendWithId(
+    jp,
+    (doc) => (asArray(field(doc, "entries") ?? void 0) ?? []).filter((e) => field(e, "kind") === "reject").map((e) => field(e, "id") ?? null),
+    "RX",
+    (doc, id) => {
+      const d = asObject(doc) ?? {};
+      const es = asArray(d["entries"]) ?? [];
+      return { ...d, entries: [...es, { id, kind: "reject", proposal: p.id, reason: f.reason, by: f.by, authority: f.authority, date: ctx.today }] };
+    },
+    { gov, today: ctx.today, env: ctx.env }
+  ));
+  cli.data({ id: res.id, proposal: p.id, repo: target, commit_paths: [REPO_GOV_JOURNAL] });
+  cli.sayAlways(res.id);
+  return cli.emit(`${res.id}: ${p.id} rejected in ${target} by ${f.by} under ${f.authority} \u2014 ${f.reason}`);
+}
+function repoGovRemove(cli, ctx, args) {
+  const f = parseFlags2(args, (m2) => cli.dieUsage(m2), ["--by", "--authority", "--note"]);
+  const target = repoArg2(cli, ctx, f, "remove");
+  if (f.by === null) cli.die("repo-gov remove: --by is required \u2014 name who withdraws it; it is a person's act");
+  const gov = join45(target, "governance");
+  refusing(cli, () => authorityGuard(gov, f.authority ?? "", "repo-gov remove"));
+  const m = measure(target);
+  if (m.state === "broken") cli.die(m.detail);
+  if (m.current === null && m.addendum === null) cli.die(`${target} carries no repo governance addendum \u2014 nothing to remove`);
+  const cp = join45(target, "CLAUDE.md");
+  const split = isFile(cp) ? splitAddendum(readFileSync39(cp)) : null;
+  const jp = join45(target, REPO_GOV_JOURNAL);
+  refusing(cli, () => {
+    ensureFile(jp, REPO_GOV_TEMPLATE);
+    sealBootstrap(gov, ctx.today);
+  });
+  const res = refusing(cli, () => appendWithId(
+    jp,
+    (doc) => (asArray(field(doc, "entries") ?? void 0) ?? []).filter((e) => field(e, "kind") === "remove").map((e) => field(e, "id") ?? null),
+    "RR",
+    (doc, id) => {
+      const d = asObject(doc) ?? {};
+      const es = asArray(d["entries"]) ?? [];
+      return { ...d, entries: [...es, { id, kind: "remove", removes: m.current?.id ?? null, sha256: m.addendum?.sha256 ?? null, by: f.by, authority: f.authority, note: f.note, date: ctx.today }] };
+    },
+    { gov, today: ctx.today, env: ctx.env }
+  ));
+  const paths = [REPO_GOV_JOURNAL];
+  if (split !== null && split.section !== null) {
+    try {
+      writeFileSync17(cp, split.head);
+      paths.unshift("CLAUDE.md");
+    } catch {
+      cli.die(`${res.id} is recorded but ${cp} could not be written \u2014 fix the permission and re-run`);
+    }
+  }
+  cli.data({ id: res.id, repo: target, removes: m.current?.id ?? null, commit_paths: paths });
+  cli.sayAlways(res.id);
+  return cli.emit(`${res.id}: repo governance addendum withdrawn from ${target} by ${f.by} under ${f.authority}${m.current === null ? "" : ` (${m.current.id} no longer in force)`}. CLAUDE.md ends as the deploy wrote it; the journal keeps the record. Commit ${paths.join(" and ")}.`);
+}
+
+// src/nouns/repo-gov.ts
+var VERBS3 = ["show", "diff", "verify", "propose", "publish", "accept", "reject", "remove"];
+var VERBS_TSV16 = "show	the addendum in force, the section in CLAUDE.md, proposals and history\ndiff	what publishing a file, or adopting the section, would change\nverify	journal readable and the section is what was published \u2014 drift is variance\npropose	record a proposed addendum; binds nothing\npublish	publish an addendum into CLAUDE.md \u2014 a person's act\naccept	publish a proposal's text, naming it \u2014 a person's act\nreject	refuse a proposal, with the reason \u2014 a person's act\nremove	withdraw the addendum from CLAUDE.md, recorded \u2014 a person's act\n";
+var USAGE12 = NOUN_USAGE["repo-gov"] ?? "";
+function run(cli, ctx, verb, args) {
+  const n = nounContext(ctx);
+  switch (verb) {
+    case "show":
+      return repoGovShow(cli, n, args);
+    case "diff":
+      return repoGovDiff(cli, n, args);
+    case "verify":
+      return repoGovVerify(cli, n, args);
+    case "propose":
+      return repoGovPropose(cli, n, args);
+    case "publish":
+      return repoGovPublish(cli, n, args);
+    case "accept":
+      return repoGovAccept(cli, n, args);
+    case "reject":
+      return repoGovReject(cli, n, args);
+    case "remove":
+      return repoGovRemove(cli, n, args);
+    default:
+      return cli.dieUsage(`unknown verb '${verb}' for noun repo-gov \u2014 verbs: ${VERBS3.join(", ")}. See: scrumux help repo-gov`);
+  }
+}
+var MODULE16 = {
+  verbs: () => VERBS_TSV16,
+  usage: () => USAGE12,
+  run
+};
+
 // src/nouns/secret.ts
 import { spawnSync as spawnSync10 } from "node:child_process";
-import { createHash as createHash3 } from "node:crypto";
-import { appendFileSync as appendFileSync3, chmodSync as chmodSync6, readFileSync as readFileSync32, writeFileSync as writeFileSync12 } from "node:fs";
-import { join as join40 } from "node:path";
-var VERBS_TSV15 = `set	store a secret in this repo's .env (pipe the value on stdin)
+import { createHash as createHash5 } from "node:crypto";
+import { appendFileSync as appendFileSync4, chmodSync as chmodSync8, readFileSync as readFileSync40, writeFileSync as writeFileSync18 } from "node:fs";
+import { join as join46 } from "node:path";
+var VERBS_TSV17 = `set	store a secret in this repo's .env (pipe the value on stdin)
 list	names, sizes and fingerprints \u2014 never values
 remove	drop one name from .env
 `;
-var USAGE11 = `scrumux secret \u2014 credentials for this repo's own code, stored never printed.
+var USAGE13 = `scrumux secret \u2014 credentials for this repo's own code, stored never printed.
 
   printf %s '<value>' | scrumux secret set NAME
   scrumux secret set NAME VALUE       (discouraged \u2014 see below)
@@ -10564,19 +12630,19 @@ function parseEnv(text2) {
       // `.length` would under-report any multi-byte value and the
       // operator-visible number would stop matching what .env holds.
       bytes: Buffer.byteLength(v, "utf8"),
-      sha256_prefix: createHash3("sha256").update(Buffer.from(v, "utf8")).digest("hex").slice(0, 8)
+      sha256_prefix: createHash5("sha256").update(Buffer.from(v, "utf8")).digest("hex").slice(0, 8)
     });
   }
   return out;
 }
 function secretList(cli, ctx) {
-  const envf = join40(ctx.root, ".env");
+  const envf = join46(ctx.root, ".env");
   if (!isFile(envf)) {
     cli.say("no .env yet \u2014 nothing stored");
     cli.emit("");
   }
   cli.say("secrets in .env (names and fingerprints only \u2014 values are never printed):");
-  const rows5 = parseEnv(readFileSync32(envf, "utf8"));
+  const rows5 = parseEnv(readFileSync40(envf, "utf8"));
   for (const r of rows5) {
     cli.say(`  ${r.name.padEnd(28)} ${r.bytes} bytes  sha256:${r.sha256_prefix}`);
   }
@@ -10601,23 +12667,23 @@ function envDropText(text2, name) {
 function envDrop(cli, file, name) {
   let text2;
   try {
-    text2 = readFileSync32(file, "utf8");
+    text2 = readFileSync40(file, "utf8");
   } catch {
     text2 = "";
   }
   const out = envDropText(text2, name);
   try {
-    writeFileSync12(file, "");
+    writeFileSync18(file, "");
   } catch {
     cli.die(`secret: cannot rewrite ${file}`);
   }
   secure(file);
-  if (out !== "") appendFileSync3(file, out);
+  if (out !== "") appendFileSync4(file, out);
   secure(file);
 }
 function secure(file) {
   try {
-    chmodSync6(file, 384);
+    chmodSync8(file, 384);
   } catch {
   }
 }
@@ -10634,7 +12700,7 @@ function gitTracksEnv(root) {
 }
 function readStdin2() {
   try {
-    return readFileSync32(0, "utf8").replace(/\n+$/, "");
+    return readFileSync40(0, "utf8").replace(/\n+$/, "");
   } catch {
     return "";
   }
@@ -10679,7 +12745,7 @@ function requireUsableName(cli, name) {
 function secretRemove(cli, ctx, args) {
   const { name } = parsePositional(cli, "remove", args);
   requireUsableName(cli, name);
-  const envf = join40(ctx.root, ".env");
+  const envf = join46(ctx.root, ".env");
   if (!isFile(envf)) cli.die(`secret: no .env to remove ${name} from`);
   const re = envMatcher(name);
   const text2 = safeRead(envf);
@@ -10694,8 +12760,8 @@ function secretSet(cli, ctx, args) {
   const say = (s2) => cli.say(s2);
   const { name, val: argvVal } = parsePositional(cli, "set", args);
   requireUsableName(cli, name);
-  const envf = join40(ctx.root, ".env");
-  const gi = join40(ctx.root, ".gitignore");
+  const envf = join46(ctx.root, ".env");
+  const gi = join46(ctx.root, ".gitignore");
   let val = argvVal;
   let fromArgv = true;
   if (val === "") {
@@ -10719,14 +12785,14 @@ function secretSet(cli, ctx, args) {
   }
   if (!isFile(gi)) {
     try {
-      writeFileSync12(gi, "# secrets \u2014 never commit\n.env\n");
+      writeFileSync18(gi, "# secrets \u2014 never commit\n.env\n");
     } catch {
       cli.die(`secret: cannot create ${gi}`);
     }
     say("created .gitignore covering .env");
   } else if (!gitignoreCoversEnv(safeRead(gi))) {
     try {
-      appendFileSync3(gi, "\n# secrets \u2014 never commit\n.env\n");
+      appendFileSync4(gi, "\n# secrets \u2014 never commit\n.env\n");
     } catch {
       cli.die(`secret: cannot append to ${gi}`);
     }
@@ -10739,12 +12805,12 @@ function secretSet(cli, ctx, args) {
   }
   if (!isFile(envf)) {
     try {
-      writeFileSync12(envf, "");
+      writeFileSync18(envf, "");
     } catch {
     }
   }
   try {
-    chmodSync6(envf, 384);
+    chmodSync8(envf, 384);
   } catch {
     cli.die(`secret: cannot secure ${envf} to mode 600`);
   }
@@ -10755,13 +12821,13 @@ function secretSet(cli, ctx, args) {
     verb = "replaced";
   }
   try {
-    appendFileSync3(envf, `${name}=${val}
+    appendFileSync4(envf, `${name}=${val}
 `);
   } catch {
     cli.die(`secret: cannot write to ${envf}`);
   }
   secure(envf);
-  const fp = createHash3("sha256").update(Buffer.from(val, "utf8")).digest("hex").slice(0, 8);
+  const fp = createHash5("sha256").update(Buffer.from(val, "utf8")).digest("hex").slice(0, 8);
   const len = Buffer.byteLength(val, "utf8");
   say(`${name} ${verb} in .env (${len} bytes, sha256:${fp}) \u2014 mode 600, gitignored`);
   say(
@@ -10777,14 +12843,14 @@ function secretSet(cli, ctx, args) {
 }
 function safeRead(p) {
   try {
-    return readFileSync32(p, "utf8");
+    return readFileSync40(p, "utf8");
   } catch {
     return "";
   }
 }
-var MODULE15 = {
-  verbs: () => VERBS_TSV15,
-  usage: () => USAGE11,
+var MODULE17 = {
+  verbs: () => VERBS_TSV17,
+  usage: () => USAGE13,
   run(cli, ctx, verb, args) {
     switch (verb) {
       case "list":
@@ -10808,8 +12874,8 @@ var MODULE15 = {
 
 // src/nouns/session.ts
 import { spawnSync as spawnSync11 } from "node:child_process";
-import { existsSync as existsSync15, readFileSync as readFileSync34, readdirSync as readdirSync6, statSync as statSync14 } from "node:fs";
-import { join as join43 } from "node:path";
+import { existsSync as existsSync19, readFileSync as readFileSync42, readdirSync as readdirSync8, statSync as statSync16 } from "node:fs";
+import { join as join49 } from "node:path";
 
 // src/nouns/task/receipt-freeze.ts
 var POST_ACCEPTANCE_KEEP = 10;
@@ -10838,13 +12904,13 @@ function redDrift(row) {
 }
 
 // src/nouns/session-fresh.ts
-import { statSync as statSync13 } from "node:fs";
-import { join as join42 } from "node:path";
+import { statSync as statSync15 } from "node:fs";
+import { join as join48 } from "node:path";
 
 // src/nouns/task/fingerprint.ts
-import { createHash as createHash4 } from "node:crypto";
-import { lstatSync as lstatSync2, readdirSync as readdirSync5, readFileSync as readFileSync33 } from "node:fs";
-import { isAbsolute as isAbsolute3, join as join41, normalize as normalize2, relative as relative3, resolve as resolve5 } from "node:path";
+import { createHash as createHash6 } from "node:crypto";
+import { lstatSync as lstatSync2, readdirSync as readdirSync7, readFileSync as readFileSync41 } from "node:fs";
+import { isAbsolute as isAbsolute3, join as join47, normalize as normalize2, relative as relative3, resolve as resolve8 } from "node:path";
 
 // src/nouns/task/command-paths.ts
 var DIR_FLAGS = /* @__PURE__ */ new Set(["--directory", "--cwd", "--prefix", "-C", "--project", "--root-dir", "--rootdir"]);
@@ -10885,10 +12951,10 @@ function commandPathWords(command) {
 // src/nouns/task/fingerprint.ts
 var SKIP_DIRS2 = /* @__PURE__ */ new Set([".git", "node_modules", ".venv", "venv", "__pycache__", ".scratch", ".pytest_cache", "dist", "build"]);
 var MAX_DIR_FILES = 2e3;
-function sha256File(abs) {
+function sha256File2(abs) {
   try {
     if (!lstatSync2(abs).isFile()) return null;
-    return createHash4("sha256").update(readFileSync33(abs)).digest("hex");
+    return createHash6("sha256").update(readFileSync41(abs)).digest("hex");
   } catch {
     return null;
   }
@@ -10900,18 +12966,18 @@ function hashPath(abs) {
   } catch {
     return null;
   }
-  if (st.isFile()) return sha256File(abs);
+  if (st.isFile()) return sha256File2(abs);
   if (!st.isDirectory()) return null;
   const files = [];
   const walk = (dir, rel2) => {
     let names;
     try {
-      names = readdirSync5(dir).sort();
+      names = readdirSync7(dir).sort();
     } catch {
       return true;
     }
     for (const name of names) {
-      const p = join41(dir, name);
+      const p = join47(dir, name);
       const r = rel2 === "" ? name : `${rel2}/${name}`;
       let s2;
       try {
@@ -10930,8 +12996,8 @@ function hashPath(abs) {
     return true;
   };
   if (!walk(abs, "")) return null;
-  const h = createHash4("sha256");
-  for (const r of files) h.update(`${r}\0${sha256File(join41(abs, r)) ?? ""}
+  const h = createHash6("sha256");
+  for (const r of files) h.update(`${r}\0${sha256File2(join47(abs, r)) ?? ""}
 `);
   return h.digest("hex");
 }
@@ -10939,7 +13005,7 @@ function fileHashes(workRoot, paths) {
   const out = {};
   for (const p of paths) {
     if (p === "" || p in out) continue;
-    const h = sha256File(join41(workRoot, p));
+    const h = sha256File2(join47(workRoot, p));
     if (h !== null) out[p] = h;
   }
   return out;
@@ -10960,7 +13026,7 @@ function coveredPaths(row) {
   return out;
 }
 function inside(root, abs) {
-  const rel2 = relative3(resolve5(root), resolve5(abs));
+  const rel2 = relative3(resolve8(root), resolve8(abs));
   if (rel2 === "" || rel2.startsWith("..") || isAbsolute3(rel2)) return null;
   return rel2.split("\\").join("/");
 }
@@ -10969,7 +13035,7 @@ function checkFingerprint(workRoot, command) {
   const bases = ["", ...commandWorkDirs(command)];
   for (const w of commandPathWords(command)) {
     for (const base of bases) {
-      const abs = isAbsolute3(w) ? w : resolve5(workRoot, normalize2(join41(base, w)));
+      const abs = isAbsolute3(w) ? w : resolve8(workRoot, normalize2(join47(base, w)));
       const rel2 = inside(workRoot, abs);
       if (rel2 === null || rel2 in files) continue;
       const h = hashPath(abs);
@@ -10984,7 +13050,7 @@ function checkFingerprint(workRoot, command) {
 var asRow2 = (v) => v !== null && v !== void 0 && typeof v === "object" && !Array.isArray(v) ? v : null;
 function mtime(path) {
   try {
-    return Math.floor(statSync13(path).mtimeMs / 1e3);
+    return Math.floor(statSync15(path).mtimeMs / 1e3);
   } catch {
     return 0;
   }
@@ -10993,11 +13059,11 @@ function firstChanged(row, receipt, workRoot) {
   const hashes = asRow2(receipt["file_hashes"]);
   const at = Number(interp(receipt["at_epoch"] ?? null));
   for (const f of coveredPaths(row)) {
-    const p = join42(workRoot, f);
+    const p = join48(workRoot, f);
     if (!isFile(p)) continue;
     if (hashes !== null) {
       const want = hashes[f];
-      if (typeof want !== "string" || sha256File(p) !== want) return f;
+      if (typeof want !== "string" || sha256File2(p) !== want) return f;
       continue;
     }
     if (!Number.isFinite(at)) continue;
@@ -11037,8 +13103,8 @@ function acceptedWithOpenIssue(tasks, issues) {
 }
 
 // src/nouns/session.ts
-var VERBS_TSV16 = "check	the close: six deterministic checks over receipts, journals and git\n";
-var USAGE12 = `scrumux session \u2014 the session close.
+var VERBS_TSV18 = "check	the close: six deterministic checks over receipts, journals and git\n";
+var USAGE14 = `scrumux session \u2014 the session close.
 
   scrumux session check
 
@@ -11060,9 +13126,9 @@ stopping for.
 var PRUNE = [".git", "governance", "tests", "node_modules", ".venv", "venv", "dist", "build"];
 var NOT_NAMED = ["AI_LOG.MD", "DECISIONS.MD", "BACKLOG.MD"];
 function readDoc2(path) {
-  if (!existsSync15(path)) return null;
+  if (!existsSync19(path)) return null;
   try {
-    return parsePreservingNumbers(readFileSync34(path, "utf8"));
+    return parsePreservingNumbers(readFileSync42(path, "utf8"));
   } catch {
     return null;
   }
@@ -11080,17 +13146,17 @@ function stubScan(workRoot) {
   const walk = (dir, rel2) => {
     let names;
     try {
-      names = readdirSync6(dir);
+      names = readdirSync8(dir);
     } catch {
       return;
     }
     for (const name of names) {
       const childRel = rel2 === "" ? name : `${rel2}/${name}`;
       if (rel2 === "" && PRUNE.includes(name)) continue;
-      const p = join43(dir, name);
+      const p = join49(dir, name);
       let st;
       try {
-        st = statSync14(p);
+        st = statSync16(p);
       } catch {
         continue;
       }
@@ -11102,7 +13168,7 @@ function stubScan(workRoot) {
       if (NOT_NAMED.includes(name)) continue;
       let text2;
       try {
-        text2 = readFileSync34(p, "utf8");
+        text2 = readFileSync42(p, "utf8");
       } catch {
         continue;
       }
@@ -11121,9 +13187,9 @@ function stubScan(workRoot) {
   return out;
 }
 function sessionCheck(cli, ctx) {
-  const tasksDoc = readDoc2(join43(ctx.gov, "tasks.json"));
-  const sprintsDoc = readDoc2(join43(ctx.gov, "sprints.json"));
-  const issuesDoc = readDoc2(join43(ctx.gov, "issues.json"));
+  const tasksDoc = readDoc2(join49(ctx.gov, "tasks.json"));
+  const sprintsDoc = readDoc2(join49(ctx.gov, "sprints.json"));
+  const issuesDoc = readDoc2(join49(ctx.gov, "issues.json"));
   const tasks = entriesOf(tasksDoc ?? void 0);
   const today = ctx.today;
   cli.say(`=== SESSION CHECK (${today}) ===`);
@@ -11294,9 +13360,9 @@ function sessionCheck(cli, ctx) {
   }
   cli.emit("VERDICT: clean. Push is User's call.");
 }
-var MODULE16 = {
-  verbs: () => VERBS_TSV16,
-  usage: () => USAGE12,
+var MODULE18 = {
+  verbs: () => VERBS_TSV18,
+  usage: () => USAGE14,
   run(cli, ctx, verb, args) {
     switch (verb) {
       case "check":
@@ -11315,8 +13381,8 @@ function isGitRepo(dir) {
 }
 
 // src/nouns/sprint.ts
-import { existsSync as existsSync16, readFileSync as readFileSync35 } from "node:fs";
-import { join as join44 } from "node:path";
+import { existsSync as existsSync20, readFileSync as readFileSync43 } from "node:fs";
+import { join as join50 } from "node:path";
 
 // src/nouns/sprint-additions.ts
 var asRow3 = (v) => v !== null && v !== void 0 && typeof v === "object" && !Array.isArray(v) ? v : null;
@@ -11364,7 +13430,7 @@ function unratifiedAdditionSprint(rows5, tid) {
 }
 
 // src/nouns/sprint.ts
-var VERBS_TSV17 = `new	open a sprint against an epic, or a hotfix sprint from an issue
+var VERBS_TSV19 = `new	open a sprint against an epic, or a hotfix sprint from an issue
 add	put a task in the sprint (it needs a complete order first)
 update	change how many tasks the sprint runs at once, while it is still proposed
 descope	remove UNWORKED work from a ratified plan
@@ -11372,13 +13438,13 @@ ratify	User's word turns a proposal into a plan
 status	complete or abandon a sprint
 `;
 var SEED7 = '{"entries": []}';
-var sprintsPath = (ctx) => join44(ctx.gov, "sprints.json");
-var issuesPath2 = (ctx) => join44(ctx.gov, "issues.json");
-var tasksPath = (ctx) => join44(ctx.gov, "tasks.json");
+var sprintsPath = (ctx) => join50(ctx.gov, "sprints.json");
+var issuesPath2 = (ctx) => join50(ctx.gov, "issues.json");
+var tasksPath = (ctx) => join50(ctx.gov, "tasks.json");
 function rows3(path) {
-  if (!existsSync16(path)) return [];
+  if (!existsSync20(path)) return [];
   try {
-    const doc = parsePreservingNumbers(readFileSync35(path, "utf8"));
+    const doc = parsePreservingNumbers(readFileSync43(path, "utf8"));
     if (doc === null || typeof doc !== "object" || Array.isArray(doc)) return [];
     const e = doc["entries"];
     return Array.isArray(e) ? e : [];
@@ -11452,7 +13518,7 @@ function sprintNew(cli, ctx, ictx, args) {
         "sprint new: --epic E-0001 is required (sprints are epic-bounded, D-0004) \u2014 or use --hotfix --issue I-0001 for the fast lane"
       );
     }
-    const found = refExists(join44(ctx.gov, "design.json"), epic, (r2) => {
+    const found = refExists(join50(ctx.gov, "design.json"), epic, (r2) => {
       const o = obj4(r2);
       return o !== null && o["kind"] === "epic" ? o["id"] : void 0;
     });
@@ -11601,8 +13667,8 @@ function sprintDescope(cli, ctx, ictx, args) {
   if (!carried) {
     cli.die(`sprint descope: ${tid} is not carried by ${sid} \u2014 see the plan: .claude/scripts/scrumux status --sprint`);
   }
-  const logPath = join44(ctx.gov, "log.json");
-  if (existsSync16(logPath)) {
+  const logPath = join50(ctx.gov, "log.json");
+  if (existsSync20(logPath)) {
     const worked = rows3(logPath).filter((r) => {
       const o = obj4(r);
       return o !== null && o["task"] === tid;
@@ -11764,8 +13830,8 @@ function sprintStatus(cli, ctx, ictx, args) {
   sealBootstrap(ctx.gov, ctx.today);
   return cli.emit(`${sid} -> ${st}`);
 }
-var MODULE17 = {
-  verbs: () => VERBS_TSV17,
+var MODULE19 = {
+  verbs: () => VERBS_TSV19,
   usage: () => NOUN_USAGE["sprint"] ?? "",
   run(cli, ictx, verb, args) {
     const ctx = nounContext(ictx);
@@ -11792,14 +13858,14 @@ var MODULE17 = {
 
 // src/nouns/status.ts
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { existsSync as existsSync17 } from "node:fs";
-import { join as join45 } from "node:path";
-var VERBS_TSV18 = `session	the orientation block; ALWAYS exits 0
+import { existsSync as existsSync21 } from "node:fs";
+import { join as join51 } from "node:path";
+var VERBS_TSV20 = `session	the orientation block; ALWAYS exits 0
 planning	sprint report + decision queue + validation sweep
 sprint	the sprint report alone
 sweep	the validation sweep alone
 `;
-var USAGE13 = NOUN_USAGE["status"] ?? "";
+var USAGE15 = NOUN_USAGE["status"] ?? "";
 var State = class {
   constructor(gov, report) {
     this.gov = gov;
@@ -11833,7 +13899,7 @@ var State = class {
   load(name) {
     const hit = this.loaded.get(name);
     if (hit !== void 0) return hit;
-    const path = join45(this.gov, name);
+    const path = join51(this.gov, name);
     const r = readJournal(path);
     let v;
     if (r.kind === "ok") v = r.value;
@@ -11857,7 +13923,7 @@ function jv(j, fallback, lines) {
 function loadTasks(st) {
   if (st.tasksLoaded) return;
   st.tasksLoaded = true;
-  const path = join45(st.gov, "tasks.json");
+  const path = join51(st.gov, "tasks.json");
   const r = readJournal(path);
   if (r.kind === "absent") return;
   if (r.kind === "unreadable") {
@@ -11879,12 +13945,12 @@ function loadTasks(st) {
   }
 }
 function tasksFilePresent(st) {
-  return existsSync17(join45(st.gov, "tasks.json"));
+  return existsSync21(join51(st.gov, "tasks.json"));
 }
 function loadDesign(st) {
   if (st.designLoaded) return;
   st.designLoaded = true;
-  const path = join45(st.gov, "design.json");
+  const path = join51(st.gov, "design.json");
   const r = readJournal(path);
   if (r.kind === "absent") return;
   if (r.kind === "unreadable") {
@@ -12127,9 +14193,9 @@ function tellUnfinished(cli, st) {
   if (st.unfinished <= 0) return;
   cli.tell("sprint-in-flight", `${st.ratified} has ${st.unfinished} unfinished task(s) \u2014 working that sprint is usually right, but planning alongside it is User's call (D-0004 was a gate; T-0144 made it advice).`);
 }
-var MODULE18 = {
-  verbs: () => VERBS_TSV18,
-  usage: () => USAGE13,
+var MODULE20 = {
+  verbs: () => VERBS_TSV20,
+  usage: () => USAGE15,
   run(cli, ctx, verb, args) {
     if (args.length > 0) cli.dieUsage(`status ${verb} takes no arguments`);
     const report = new Report(cli.json, ctx.io);
@@ -12157,9 +14223,9 @@ var MODULE18 = {
 };
 
 // src/nouns/story.ts
-import { join as join46 } from "node:path";
-var VERBS_TSV19 = "new	the only verb\n";
-var USAGE14 = NOUN_USAGE["story"] ?? "";
+import { join as join52 } from "node:path";
+var VERBS_TSV21 = "new	the only verb\n";
+var USAGE16 = NOUN_USAGE["story"] ?? "";
 var DESIGN_SEED3 = '{"entries": []}';
 function parseStoryFlags(args, die) {
   const f = { feature: "", narrative: "", criteria: [] };
@@ -12197,7 +14263,7 @@ function storyNew(cli, ctx, io, args) {
   if (f.criteria.length === 0) {
     cli.die('story: at least one --criterion is required (acceptance_criteria, minItems 1) \u2014 each one an observable check a person could confirm or deny by looking at the running thing or its record: a shape returned, a refusal given, a record written, a command exiting a stated code. One behaviour per criterion; a criterion with "and" in it is usually two. GOOD "scrumux accept T-XXXX --authority refuses a red or missing receipt and is write-once" (S-0069). GOOD "harness verify executes every registered surface" (S-0070). GOOD "cold probes of the standalone and app lanes pass with task-verify under 15s and close under 10s" (S-0070). BAD "acceptance is reliable" \u2014 an adjective, not a check.');
   }
-  const design = join46(ctx.gov, "design.json");
+  const design = join52(ctx.gov, "design.json");
   refusing(cli, () => ensureFile(design, DESIGN_SEED3));
   if (!refExists(design, f.feature, (r) => field(r, "kind") === "feature" ? field(r, "id") : void 0)) {
     cli.die(`story: feature ${f.feature} not found \u2014 add it first: scrumux feature new --name ... --desc ...`);
@@ -12230,9 +14296,9 @@ function storyNew(cli, ctx, io, args) {
   sealBootstrap(ctx.gov, ctx.today);
   return emitted(cli, id);
 }
-var MODULE19 = {
-  verbs: () => VERBS_TSV19,
-  usage: () => USAGE14,
+var MODULE21 = {
+  verbs: () => VERBS_TSV21,
+  usage: () => USAGE16,
   run(cli, ctx, verb, args) {
     switch (verb) {
       case "new":
@@ -12246,15 +14312,15 @@ var MODULE19 = {
 };
 
 // src/nouns/task.ts
-import { join as join54 } from "node:path";
+import { join as join60 } from "node:path";
 
 // src/nouns/task/accept-extras.ts
-import { join as join50 } from "node:path";
+import { join as join56 } from "node:path";
 
 // src/nouns/task/shared.ts
-import { existsSync as existsSync18, readFileSync as readFileSync36 } from "node:fs";
+import { existsSync as existsSync22, readFileSync as readFileSync44 } from "node:fs";
 import { spawnSync as spawnSync12 } from "node:child_process";
-import { join as join47 } from "node:path";
+import { join as join53 } from "node:path";
 function jqRaw3(v) {
   if (v === void 0 || v === null) return "null";
   if (typeof v === "string") return v;
@@ -12276,9 +14342,9 @@ function arr3(v) {
   return Array.isArray(v) ? v : [];
 }
 function rows4(path) {
-  if (!existsSync18(path)) return [];
+  if (!existsSync22(path)) return [];
   try {
-    const doc = parsePreservingNumbers(readFileSync36(path, "utf8"));
+    const doc = parsePreservingNumbers(readFileSync44(path, "utf8"));
     const o = obj5(doc);
     if (o === null) return [];
     return arr3(o["entries"]);
@@ -12293,8 +14359,8 @@ function rowById3(path, id) {
   }
   return null;
 }
-var tasksPath2 = (ctx) => join47(ctx.gov, "tasks.json");
-var sprintsPath2 = (ctx) => join47(ctx.gov, "sprints.json");
+var tasksPath2 = (ctx) => join53(ctx.gov, "tasks.json");
+var sprintsPath2 = (ctx) => join53(ctx.gov, "sprints.json");
 function directOut(io) {
   return (line) => io.out(line + "\n");
 }
@@ -12305,7 +14371,7 @@ function tailOfCapture(captured, n) {
   return stripTrailingNewlines3(captured).split("\n").slice(-n);
 }
 function cliPath(ctx) {
-  return join47(ctx.scriptsDir, "scrumux");
+  return join53(ctx.scriptsDir, "scrumux");
 }
 function runScrumux(ctx, args) {
   const r = spawnSync12(process.execPath, [cliPath(ctx), ...args], {
@@ -12340,31 +14406,31 @@ function bearingRecordLines(bearing2) {
 }
 
 // src/nouns/task/verify.ts
-import { existsSync as existsSync19, mkdirSync as mkdirSync10, rmdirSync as rmdirSync2 } from "node:fs";
-import { join as join49 } from "node:path";
+import { existsSync as existsSync23, mkdirSync as mkdirSync13, rmdirSync as rmdirSync3 } from "node:fs";
+import { join as join55 } from "node:path";
 
 // src/nouns/task/evidence.ts
-import { mkdirSync as mkdirSync9, writeFileSync as writeFileSync13 } from "node:fs";
-import { join as join48 } from "node:path";
+import { mkdirSync as mkdirSync12, writeFileSync as writeFileSync19 } from "node:fs";
+import { join as join54 } from "node:path";
 var EVIDENCE_DIR = ".evidence";
 var EVIDENCE_LINES = 40;
 var LINE_CAP = 400;
-var evidencePath = (gov, tid, kind) => join48(gov, EVIDENCE_DIR, `${tid}.${kind}.txt`);
-function writeEvidence(gov, tid, kind, run, output) {
+var evidencePath = (gov, tid, kind) => join54(gov, EVIDENCE_DIR, `${tid}.${kind}.txt`);
+function writeEvidence(gov, tid, kind, run2, output) {
   try {
-    const dir = join48(gov, EVIDENCE_DIR);
-    mkdirSync9(dir, { recursive: true });
-    writeFileSync13(join48(dir, ".gitignore"), "*\n");
+    const dir = join54(gov, EVIDENCE_DIR);
+    mkdirSync12(dir, { recursive: true });
+    writeFileSync19(join54(dir, ".gitignore"), "*\n");
     const lines = output.replace(/\n+$/, "").split("\n").slice(-EVIDENCE_LINES).map((l) => l.length > LINE_CAP ? `${l.slice(0, LINE_CAP)}\u2026` : l);
     const head = [
       `# scrumux task verify evidence (${kind}) \u2014 ${tid}`,
-      `# command: ${run.command}`,
-      `# rc: ${run.rc}`,
-      `# date: ${run.date}`,
-      `# at_epoch: ${run.atEpoch}`,
+      `# command: ${run2.command}`,
+      `# rc: ${run2.rc}`,
+      `# date: ${run2.date}`,
+      `# at_epoch: ${run2.atEpoch}`,
       `# output (last ${EVIDENCE_LINES} lines of the verification command):`
     ];
-    writeFileSync13(evidencePath(gov, tid, kind), `${[...head, ...lines].join("\n")}
+    writeFileSync19(evidencePath(gov, tid, kind), `${[...head, ...lines].join("\n")}
 `);
   } catch {
   }
@@ -12375,10 +14441,10 @@ var VERIFY_TIMEOUT_SECONDS = 600;
 function taskVerify(cli, ctx, ictx, args) {
   const io = ictx.io;
   const tasks = tasksPath2(ctx);
-  const health = join49(ctx.gov, "repo-health.json");
+  const health = join55(ctx.gov, "repo-health.json");
   const tid = args[0] ?? "";
   if (tid === "") cli.dieUsage("usage: scrumux task verify T-0001");
-  if (!existsSync19(tasks)) cli.die("no governance/tasks.json");
+  if (!existsSync23(tasks)) cli.die("no governance/tasks.json");
   const row = rows4(tasks).map((r) => obj5(r)).find((o) => o !== null && o["id"] === tid);
   const order = row === void 0 ? null : obj5(row["task_order"]);
   const vc = order === null ? "" : rawOr(order["verification_command"], "");
@@ -12419,7 +14485,7 @@ function taskVerify(cli, ctx, ictx, args) {
   vcRc = runCheck(`verification_command for ${tid}`, vc);
   checksRun += 1;
   if (vcRc !== 0) checksFailed += 1;
-  if (existsSync19(health)) {
+  if (existsSync23(health)) {
     const results = runHealthChecks(ctx, health);
     for (const res of results) {
       cli.say(`--- repo-health: ${res.name}`);
@@ -12509,29 +14575,29 @@ function printTailOfFile(io, content, n) {
   }
 }
 function writeReceipt(cli, ctx, tid, vc, rc, checksRun, checksFailed, io, output = "", covered = []) {
-  const probe = join49(ctx.gov, `.receipt-probe.${process.pid}`);
+  const probe = join55(ctx.gov, `.receipt-probe.${process.pid}`);
   try {
-    mkdirSync10(probe);
+    mkdirSync13(probe);
   } catch {
     io.err(`task verify: could not record the receipt on ${tid} \u2014 governance/ is not writable (read-only agent sandbox?). The verdict above stands; re-run outside the sandbox to leave a receipt for scrumux task accept.
 `);
     return accepted(ctx, tid);
   }
   try {
-    rmdirSync2(probe);
+    rmdirSync3(probe);
   } catch {
   }
   const atEpoch = Math.floor(Date.now() / 1e3);
-  const run = { date: ctx.today, at_epoch: atEpoch, command: vc, rc, checks_run: checksRun, checks_failed: checksFailed };
+  const run2 = { date: ctx.today, at_epoch: atEpoch, command: vc, rc, checks_run: checksRun, checks_failed: checksFailed };
   const settled = accepted(ctx, tid);
   writeEvidence(ctx.gov, tid, settled ? "post-acceptance" : "verify", { command: vc, rc, date: ctx.today, atEpoch }, output);
-  const receipt = { ...run, file_hashes: fileHashes(ctx.workRoot, covered) };
+  const receipt = { ...run2, file_hashes: fileHashes(ctx.workRoot, covered) };
   try {
     writeJson(
       tasksPath2(ctx),
       (doc) => mapEntries(
         doc,
-        (r) => r["id"] !== tid ? r : isAccepted(r) ? withPostAcceptanceCheck(r, run) : withReceipt(r, receipt, run)
+        (r) => r["id"] !== tid ? r : isAccepted(r) ? withPostAcceptanceCheck(r, run2) : withReceipt(r, receipt, run2)
       ),
       { gov: ctx.gov, today: ctx.today, env: ctx.env, err: () => {
       } }
@@ -12590,7 +14656,7 @@ function acceptedFingerprint(ctx, command) {
 function issueTell(cli, ctx, task, tid) {
   const iid = task === null || typeof task["issue"] !== "string" ? "" : task["issue"];
   if (iid === "") return;
-  const row = rows4(join50(ctx.gov, "issues.json")).map((r) => obj5(r)).find((o) => o !== null && o["id"] === iid) ?? null;
+  const row = rows4(join56(ctx.gov, "issues.json")).map((r) => obj5(r)).find((o) => o !== null && o["id"] === iid) ?? null;
   const status = row === null ? "unknown" : rawOr(row["status"], "unknown");
   cli.data({ issue: iid, issue_status: status });
   if (status === "resolved" || status === "rejected") return;
@@ -12598,8 +14664,8 @@ function issueTell(cli, ctx, task, tid) {
 }
 
 // src/nouns/task/lint.ts
-import { existsSync as existsSync21 } from "node:fs";
-import { join as join52 } from "node:path";
+import { existsSync as existsSync25 } from "node:fs";
+import { join as join58 } from "node:path";
 
 // src/nouns/task/reader.ts
 var HOLLOW_GREENS = [
@@ -12615,8 +14681,8 @@ function readerQuestion(verificationCommand, failsWhen) {
 }
 
 // src/nouns/task/scope-paths.ts
-import { existsSync as existsSync20 } from "node:fs";
-import { isAbsolute as isAbsolute4, join as join51 } from "node:path";
+import { existsSync as existsSync24 } from "node:fs";
+import { isAbsolute as isAbsolute4, join as join57 } from "node:path";
 var URL_SPAN = /\b[A-Za-z][A-Za-z0-9+.-]*:\/\/\S*/g;
 var HOST_PORT_SPAN = /\b[A-Za-z0-9][A-Za-z0-9.-]*:[0-9]{2,5}(?:\/\S*)?/g;
 var KNOWN_SUFFIX = /\.(py|sh|json|md|MD)$/;
@@ -12628,8 +14694,8 @@ function isFileShaped(tok, workRoot) {
   if (tok.startsWith("//")) return false;
   if (ENV_PREFIX.test(tok)) return false;
   if (HAS_EXTENSION.test(tok)) return true;
-  const onDisk = isAbsolute4(tok) ? tok : join51(workRoot, tok);
-  return existsSync20(onDisk);
+  const onDisk = isAbsolute4(tok) ? tok : join57(workRoot, tok);
+  return existsSync24(onDisk);
 }
 function unlistedScopePaths(scopeText, listed, workRoot, workDirs = []) {
   const have = listed.filter((p) => p !== "");
@@ -12657,7 +14723,7 @@ function needValue(cli, args, i) {
 }
 function taskLint(cli, ctx, _ictx, args) {
   const tasks = tasksPath2(ctx);
-  if (!existsSync21(tasks)) {
+  if (!existsSync25(tasks)) {
     cli.die("no governance/tasks.json \u2014 create tasks first: scrumux task new --title ... --check ...");
   }
   let hotfix = 0;
@@ -12776,7 +14842,7 @@ function taskLint(cli, ctx, _ictx, args) {
     } else {
       const changed = bearingChangedPaths(bearing2);
       const nref = refs.length;
-      const ndec = rows4(join52(ctx.gov, "decisions.json")).length;
+      const ndec = rows4(join58(ctx.gov, "decisions.json")).length;
       if (changed !== "" && nref === 0 && ndec === 0) {
         tell(`this order CHANGES ${changed} and cites no governance refs, and this repo has recorded no decisions yet \u2014 so there is nothing to cite and nothing to fix here. Cite one when one exists (D-0005)`);
       } else if (changed !== "" && nref === 0) {
@@ -12809,8 +14875,8 @@ function taskLint(cli, ctx, _ictx, args) {
 }
 
 // src/nouns/task/brief.ts
-import { existsSync as existsSync22, readFileSync as readFileSync37 } from "node:fs";
-import { join as join53 } from "node:path";
+import { existsSync as existsSync26, readFileSync as readFileSync45 } from "node:fs";
+import { join as join59 } from "node:path";
 
 // src/nouns/task/brief-notes.ts
 function mustFailWhenLine(failsWhen) {
@@ -12877,7 +14943,7 @@ function taskBrief(cli, ctx, ictx, args) {
     cli.dieUsage("usage: scrumux task brief T-0001 [--allow-unsprinted]");
   }
   if (tid === "") cli.dieUsage("usage: scrumux task brief T-0001 [--allow-unsprinted]");
-  if (!existsSync22(tasks)) cli.die("no governance/tasks.json");
+  if (!existsSync26(tasks)) cli.die("no governance/tasks.json");
   const row = rows4(tasks).map((r) => obj5(r)).find((o) => o !== null && o["id"] === tid);
   if (row === void 0) cli.die(`${tid} not found in governance/tasks.json \u2014 check the task id`);
   cli.say(`=== TASK BRIEF ${tid} (${ctx.today}) ===`);
@@ -13064,7 +15130,7 @@ OUT (do not touch):`];
   for (const n of WORKING_NOTES) out(`  - ${n}`);
   cli.say("");
   cli.say(`--- History for ${tid} ---`);
-  historyBlock(out, join53(ctx.gov, "log.json"), tid);
+  historyBlock(out, join59(ctx.gov, "log.json"), tid);
   cli.say("");
   if (gateFail === 1) {
     cli.emit("VERDICT: gates FAILED \u2014 fix the named items before implementing. Do not start.");
@@ -13083,13 +15149,13 @@ function ratifiedSprintCarrying(path, tid) {
   return "";
 }
 function historyBlock(out, logPath, tid) {
-  if (!existsSync22(logPath)) {
+  if (!existsSync26(logPath)) {
     out("  (no log.json)");
     return;
   }
   let doc;
   try {
-    doc = parsePreservingNumbers(readFileSync37(logPath, "utf8"));
+    doc = parsePreservingNumbers(readFileSync45(logPath, "utf8"));
   } catch {
     return;
   }
@@ -13114,7 +15180,7 @@ function historyBlock(out, logPath, tid) {
 }
 
 // src/nouns/task.ts
-var VERBS_TSV20 = `new	create a task; the acceptance check is stated BEFORE work starts
+var VERBS_TSV22 = `new	create a task; the acceptance check is stated BEFORE work starts
 order	attach the task order \u2014 scope, one verification command, reading list
 status	move it through proposed|ready|in_progress|in_review|blocked|accepted|superseded
 update	change its feature, story or title
@@ -13177,7 +15243,7 @@ function taskNew(cli, ctx, ictx, args) {
     cli.die('task new: --check is required (the acceptance check, stated BEFORE work starts) \u2014 a command-verifiable sentence naming what must be observably true AND the suite that shows it. GOOD (build) "graph gov build succeeds on a GOV_ROOT whose governance directory does not exist yet, and tests/graph-cli-tests.sh exits 0" (T-0213). GOOD (defect) "A tree containing __pycache__ or .pyc files closes session-check exit 0 when everything else traces to a worked task, an unauthorised source file still FAILs by name, and tests/session-check-tests.sh exits 0" (T-0217). GOOD (governance) "No rule or skill in the deploy payload instructs an agent to create harness work, and tests/deployed-surface-tests.sh asserts it against the payload roster, exiting 0" (T-0214). BAD "works", "tests pass", "the fix is applied" \u2014 none of them names what would have to be false for the check to fail.');
   }
   if (fromIssue !== "") {
-    const issuesPath3 = join54(ctx.gov, "issues.json");
+    const issuesPath3 = join60(ctx.gov, "issues.json");
     if (!refExists(issuesPath3, fromIssue)) {
       cli.die(`task new: issue ${fromIssue} not found in issues.json`);
     }
@@ -13230,7 +15296,7 @@ function taskNew(cli, ctx, ictx, args) {
   return emitted(cli, r.id);
 }
 function designPathOf(ctx) {
-  return join54(ctx.gov, "design.json");
+  return join60(ctx.gov, "design.json");
 }
 function kindPick(kind) {
   return (r) => {
@@ -13770,8 +15836,8 @@ function rejectPrior(path, tid) {
   }
   return lines.join("\n");
 }
-var MODULE20 = {
-  verbs: () => VERBS_TSV20,
+var MODULE22 = {
+  verbs: () => VERBS_TSV22,
   usage: () => NOUN_USAGE["task"] ?? "",
   run(cli, ictx, verb, args) {
     const ctx = nounContext(ictx);
@@ -13823,8 +15889,8 @@ function orderLoss(prior, next) {
 }
 
 // src/nouns/views-render.ts
-import { existsSync as existsSync23, mkdirSync as mkdirSync11, readFileSync as readFileSync38, writeFileSync as writeFileSync14 } from "node:fs";
-import { join as join55 } from "node:path";
+import { existsSync as existsSync27, mkdirSync as mkdirSync14, readFileSync as readFileSync46, writeFileSync as writeFileSync20 } from "node:fs";
+import { join as join61 } from "node:path";
 var AI_LOG_HEADER = "# AI_LOG.MD\n<!-- GENERATED VIEW \u2014 source of truth: governance/log.json (append-only).\n     Do not edit by hand; run: .claude/scripts/scrumux views render -->\n\n";
 var DECISIONS_HEADER = "# DECISIONS.MD\n<!-- GENERATED VIEW \u2014 source of truth: governance/decisions.json (append-only).\n     Do not edit by hand; run: .claude/scripts/scrumux views render -->\n\n";
 var BACKLOG_HEADER = "# BACKLOG.MD\n<!-- GENERATED VIEW \u2014 sources of truth: governance/tasks.json, governance/sprints.json.\n     Do not edit by hand; run: .claude/scripts/scrumux views render -->\n\n";
@@ -13838,9 +15904,9 @@ var STATUSES4 = [
   "superseded"
 ];
 function readForRender(path) {
-  if (!existsSync23(path)) return null;
+  if (!existsSync27(path)) return null;
   try {
-    return parsePreservingNumbers(readFileSync38(path, "utf8"));
+    return parsePreservingNumbers(readFileSync46(path, "utf8"));
   } catch {
     return null;
   }
@@ -13972,32 +16038,32 @@ function renderBacklog(tasks, sprints) {
 function renderViews(ctx) {
   const warnings = [];
   const written = [];
-  const logPath = join55(ctx.gov, "log.json");
-  if (existsSync23(logPath)) {
-    writeFileSync14(join55(ctx.root, "AI_LOG.MD"), renderAiLog(readForRender(logPath)));
+  const logPath = join61(ctx.gov, "log.json");
+  if (existsSync27(logPath)) {
+    writeFileSync20(join61(ctx.root, "AI_LOG.MD"), renderAiLog(readForRender(logPath)));
     written.push("AI_LOG.MD");
   }
-  const decPath = join55(ctx.gov, "decisions.json");
-  if (existsSync23(decPath)) {
-    writeFileSync14(join55(ctx.root, "DECISIONS.MD"), renderDecisions(readForRender(decPath)));
+  const decPath = join61(ctx.gov, "decisions.json");
+  if (existsSync27(decPath)) {
+    writeFileSync20(join61(ctx.root, "DECISIONS.MD"), renderDecisions(readForRender(decPath)));
     written.push("DECISIONS.MD");
   }
-  const tasksPath3 = join55(ctx.gov, "tasks.json");
-  const sprintsPath3 = join55(ctx.gov, "sprints.json");
-  writeFileSync14(
-    join55(ctx.root, "BACKLOG.MD"),
+  const tasksPath3 = join61(ctx.gov, "tasks.json");
+  const sprintsPath3 = join61(ctx.gov, "sprints.json");
+  writeFileSync20(
+    join61(ctx.root, "BACKLOG.MD"),
     renderBacklog(
-      existsSync23(tasksPath3) ? readForRender(tasksPath3) : null,
-      existsSync23(sprintsPath3) ? readForRender(sprintsPath3) : null
+      existsSync27(tasksPath3) ? readForRender(tasksPath3) : null,
+      existsSync27(sprintsPath3) ? readForRender(sprintsPath3) : null
     )
   );
   written.push("BACKLOG.MD");
   try {
-    mkdirSync11(ctx.gov, { recursive: true });
+    mkdirSync14(ctx.gov, { recursive: true });
   } catch {
   }
   let graphBuildFailed = false;
-  const cliPath2 = join55(ctx.scriptsDir, "scrumux");
+  const cliPath2 = join61(ctx.scriptsDir, "scrumux");
   if (isExecutable(cliPath2)) {
     try {
       const g = build(ctx.root);
@@ -14019,8 +16085,8 @@ function renderViews(ctx) {
 }
 
 // src/nouns/views.ts
-var VERBS_TSV21 = "render	regenerate AI_LOG.MD, DECISIONS.MD, BACKLOG.MD and the governance graph\n";
-var USAGE15 = `scrumux views \u2014 the generated MD views of the journals.
+var VERBS_TSV23 = "render	regenerate AI_LOG.MD, DECISIONS.MD, BACKLOG.MD and the governance graph\n";
+var USAGE17 = `scrumux views \u2014 the generated MD views of the journals.
 
   scrumux views render
 
@@ -14047,9 +16113,9 @@ function viewsRender(cli, ctx) {
   cli.pass("views", "AI_LOG.MD, DECISIONS.MD, BACKLOG.MD and governance-graph.json regenerated");
   cli.emit("views regenerated");
 }
-var MODULE21 = {
-  verbs: () => VERBS_TSV21,
-  usage: () => USAGE15,
+var MODULE23 = {
+  verbs: () => VERBS_TSV23,
+  usage: () => USAGE17,
   run(cli, ctx, verb, args) {
     switch (verb) {
       case "render":
@@ -14076,16 +16142,18 @@ var REGISTRY = {
   issue: () => MODULE9,
   log: () => MODULE10,
   memory: () => MODULE11,
-  rank: () => MODULE12,
-  records: () => MODULE13,
-  repair: () => MODULE14,
-  secret: () => MODULE15,
-  session: () => MODULE16,
-  sprint: () => MODULE17,
-  status: () => MODULE18,
-  story: () => MODULE19,
-  task: () => MODULE20,
-  views: () => MODULE21
+  org: () => MODULE12,
+  rank: () => MODULE13,
+  records: () => MODULE14,
+  repair: () => MODULE15,
+  "repo-gov": () => MODULE16,
+  secret: () => MODULE17,
+  session: () => MODULE18,
+  sprint: () => MODULE19,
+  status: () => MODULE20,
+  story: () => MODULE21,
+  task: () => MODULE22,
+  views: () => MODULE23
 };
 function loadNoun(noun) {
   const loader = REGISTRY[noun];

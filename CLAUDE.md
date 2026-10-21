@@ -58,7 +58,9 @@ command starts with that path, because that is what the allow-list matches.
   python, jq, sed, shell redirect or script that changes them, not even to fix
   one field. The CLI validates every write, records who made it and on what
   authority, and seals it; a file you edit by hand has none of that, and the
-  next session inherits whatever you left.
+  next session inherits whatever you left. The fifth wall,
+  `block-governance-write`, refuses those writes before they run; its refusal
+  names the verb to use instead.
 - **Do not wrap the CLI.** No variable holding its path, no shell function, no
   loop of calls, no `bash -c`, no `env` or `VAR=` prefix. Ten acts are ten
   calls.
